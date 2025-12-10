@@ -13,14 +13,11 @@ export default function InsumosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null)
 
-  // --- 1. BUSCAR DADOS (GET) ---
   const fetchInsumos = async () => {
     try {
-      // Aqui é apenas um GET simples, sem body ou method
       const response = await fetch("http://127.0.0.1:8000/api/ingredients")
       const data = await response.json()
 
-      // Mapeamento dos dados
       const mappedData = data.map((item: any) => ({
         id: item.id.toString(),
         nome: item.name,
@@ -41,12 +38,10 @@ export default function InsumosPage() {
     }
   }
 
-  // Carrega ao abrir a página
   useEffect(() => {
     fetchInsumos()
   }, [])
 
-  // --- 2. SALVAR (POST ou PUT) ---
   const handleSaveInsumo = async (dadosInsumo: Omit<Insumo, "id" | "status">) => {
     try {
       const payload = {
@@ -65,22 +60,20 @@ export default function InsumosPage() {
         method = "PUT"
       }
 
-      // AQUI ESTÁ A CORREÇÃO IMPORTANTE 👇
       const response = await fetch(url, {
         method: method,
         headers: { 
             "Content-Type": "application/json",
-            "Accept": "application/json" // Isso previne o erro de HTML
+            "Accept": "application/json" 
         },
         body: JSON.stringify(payload)
       })
 
       if (response.ok) {
-        await fetchInsumos() // Recarrega a tabela
+        await fetchInsumos()
         setIsModalOpen(false)
         setEditingInsumo(null)
       } else {
-        // Agora podemos ver o erro real no console se falhar
         const errorData = await response.json()
         console.error("Erro do Laravel:", errorData)
         alert("Erro ao salvar. Verifique os dados.")
@@ -90,21 +83,16 @@ export default function InsumosPage() {
     }
   }
 
- // --- 3. DELETAR (DELETE) ---
   const handleDeleteInsumo = async (id: string) => {
-    // Removemos o "window.confirm" daqui porque o botão da tabela já deve ter o Modal de confirmação
-
     try {
       const response = await fetch(`http://127.0.0.1:8000/api/ingredients/${id}`, {
         method: "DELETE",
-        headers: { "Accept": "application/json" } // Importante para receber JSON de erro
+        headers: { "Accept": "application/json" } 
       })
 
       if (response.ok) {
-        // Sucesso: Remove da tela
         setInsumos(insumos.filter((i) => i.id !== id))
       } else {
-        // Erro: Mostra o motivo (ex: Está em uso)
         const data = await response.json()
         alert(data.message || "Erro ao excluir ingrediente.")
       }
@@ -125,7 +113,8 @@ export default function InsumosPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    // DARK MODE: Fundo escuro
+    <div className="flex h-screen bg-gray-100 dark:bg-slate-950">
       <AdminSidebar activeItem="insumos" />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -133,7 +122,7 @@ export default function InsumosPage() {
         
         <main className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="text-center py-10 text-gray-500">Carregando estoque...</div>
+            <div className="text-center py-10 text-gray-500 dark:text-slate-400">Carregando estoque...</div>
           ) : (
             <InsumosTable 
               insumos={insumos} 

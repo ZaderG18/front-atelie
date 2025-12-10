@@ -38,23 +38,24 @@ export default function Home() {
         
         const data = await response.json()
 
-        // Formata os dados vindos do Banco de Dados
-        const dbProducts = data.map((item: any) => {
-          let categoryFrontend = "todos"
+        // 1. FILTRAR: Só mostra o que está marcado como "Visível na Vitrine" (is_active = true)
+        const activeProducts = data.filter((item: any) => item.is_active);
+
+        // 2. FORMATAR: Traduz os dados do Banco para o Front
+        const dbProducts = activeProducts.map((item: any) => {
           
-          switch (item.category) {
-            case "bolos_festivos": categoryFrontend = "bolos_festivos"; break
-            case "bolos_pote": categoryFrontend = "bolos-no-pote"; break
-            case "docinhos": categoryFrontend = "docinhos"; break
-            case "salgados": categoryFrontend = "salgados"; break
-            default: categoryFrontend = item.category
-          }
+          // O Admin já salva as categorias com os IDs certos ("brownies", "macarons", etc)
+          // Mas caso tenha algum legado, mantemos o switch básico
+          let categoryFrontend = item.category;
+          
+          if (item.category === "bolos_pote") categoryFrontend = "bolos-no-pote";
 
           return {
             id: item.id.toString(),
             name: item.name,
-            description: item.description,
-            image: item.image_url || "/placeholder-cake.jpg",
+            description: item.description || "Delicioso e feito com amor.",
+            // Usa a URL do Laravel ou placeholder
+            image: item.image_url || "/placeholder-cake.jpg", 
             basePrice: Number.parseFloat(item.sale_price),
             status: item.is_made_to_order ? "sob-encomenda" : "pronta-entrega",
             category: categoryFrontend,
@@ -64,7 +65,7 @@ export default function Home() {
           }
         })
 
-        console.log("✅ Conectado! Usando dados do Laravel.")
+        console.log("✅ Conectado! Carregando vitrine atualizada.")
         setProducts(dbProducts)
 
       } catch (error) {
@@ -110,7 +111,6 @@ export default function Home() {
 
       <section id="cardapio" className="px-4 py-12 md:px-8 lg:px-16">
         <div className="mx-auto max-w-7xl">
-          {/* CORREÇÃO APLICADA AQUI: font-serif em vez da variável quebrada */}
           <h2 className="mb-8 text-center font-serif text-3xl font-semibold text-foreground md:text-4xl">
             Nosso Cardápio
           </h2>
@@ -118,8 +118,9 @@ export default function Home() {
           <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
 
           {isLoading ? (
-            <div className="text-center py-10 text-gray-500 animate-pulse">
-              Verificando o forno... 🍰
+            <div className="text-center py-20">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+               <p className="text-gray-500">Tirando do forno... 🍰</p>
             </div>
           ) : (
             <ProductGrid 
