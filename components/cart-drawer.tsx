@@ -1,8 +1,16 @@
 "use client"
 
-import { X, Trash2, ShoppingBag } from "lucide-react"
+import { useState } from "react"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Trash2, ShoppingBag, Send } from "lucide-react"
 import type { CartItem } from "@/lib/types"
+import { formatCurrency } from "@/lib/utils"
+import { API_URL } from "@/lib/api-config"
 
 interface CartDrawerProps {
   items: CartItem[]
@@ -12,85 +20,172 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerProps) {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(price)
+  const [customerName, setCustomerName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Calcula o total
+  const total = items.reduce((acc, item) => {
+    const basePrice = item.basePrice || 0
+    const weightPrice = item.selectedWeight?.priceModifier || 0
+    // Adicione lógica para adicionais se houver
+    return acc + basePrice + weightPrice
+  }, 0)
+
+  const handleCheckout = async () => {
+    if (!customerName.trim()) {
+      alert("Por favor, digite seu nome para identificarmos o pedido.")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // 1. Monta o objeto para o Banco de Dados
+      const payload = {
+        customer_name: customerName,
+        total_amount: total,
+        status: "pending",
+        origin: "site_whatsapp",
+        payment_method: "combinar", // Será decidido no Zap
+        items: items.map(item => ({
+          product_id: item.id,
+          product_name: item.name, // Importante salvar o nome caso mude depois
+          price: (item.basePrice || 0) + (item.selectedWeight?.priceModifier || 0),
+          quantity: 1 // Por enquanto o carrinho não tem seletor de qtd por item, assume 1
+        }))
+      }
+
+      // 2. Envia para a API (Salva no Render/Supabase)
+      const response = await fetch(`${API_URL}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) throw new Error("Erro ao salvar pedido")
+
+      const pedidoCriado = await response.json()
+
+      // 3. Monta a mensagem do WhatsApp com o ID gerado
+      const message = `Olá! Me chamo *${customerName}* e acabei de fazer o pedido *#${pedidoCriado.id}* pelo site.\n\n` +
+        `Valor Total: *${formatCurrency(total)}*\n` +
+        `Gostaria de combinar o pagamento e a entrega!`
+
+      const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
+
+      // 4. Redireciona e fecha
+      window.open(whatsappUrl, "_blank")
+      onClose()
+      // Aqui você pode adicionar uma função para limpar o carrinho se quiser
+
+    } catch (error) {
+      console.error(error)
+      alert("Houve um erro ao processar. Tente novamente ou chame no WhatsApp direto.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const totalCart = items.reduce((sum, item) => sum + item.totalPrice, 0)
-
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/40 backdrop-blur-sm">
-      <div className="h-full w-full max-w-md bg-background shadow-2xl">
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-border p-4">
-            <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-foreground">
-              Seu Carrinho
-            </h2>
-            <button
-              onClick={onClose}
-              className="rounded-full p-2 text-foreground transition-colors hover:bg-muted"
-              aria-label="Fechar carrinho"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="flex w-full flex-col sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5" />
+            Seu Carrinho ({items.length})
+          </SheetTitle>
+        </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-4">
-            {items.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center text-center">
-                <ShoppingBag className="h-16 w-16 text-muted-foreground/50" />
-                <p className="mt-4 text-lg font-medium text-foreground">Carrinho vazio</p>
-                <p className="mt-1 text-sm text-muted-foreground">Adicione produtos deliciosos ao seu carrinho!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
+        {items.length > 0 ? (
+          <>
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+              <div className="space-y-4 py-4">
                 {items.map((item, index) => (
-                  <div key={index} className="flex gap-4 rounded-xl border border-border p-4">
-                    <img
-                      src={item.product.image || "/placeholder.svg"}
-                      alt={item.product.name}
-                      className="h-20 w-20 rounded-lg object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-foreground">{item.product.name}</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {item.weight} • {item.flavor}
-                        {item.additionals.length > 0 && <> • {item.additionals.join(", ")}</>}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">Qtd: {item.quantity}</p>
-                      <p className="mt-2 font-semibold text-primary">{formatPrice(item.totalPrice)}</p>
+                  <div key={index} className="flex gap-4">
+                    {/* Imagem pequena */}
+                    <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
+                      <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        className="h-full w-full object-cover"
+                      />
                     </div>
-                    <button
-                      onClick={() => onRemoveItem(index)}
-                      className="self-start rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-                      aria-label="Remover item"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    
+                    {/* Detalhes */}
+                    <div className="flex flex-1 flex-col justify-between">
+                      <div className="flex justify-between">
+                        <span className="font-medium line-clamp-1">{item.name}</span>
+                        <span className="font-semibold">
+                          {formatCurrency((item.basePrice || 0) + (item.selectedWeight?.priceModifier || 0))}
+                        </span>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground">
+                        {item.selectedWeight?.label !== "Padrão" && (
+                          <span>{item.selectedWeight?.label} • </span>
+                        )}
+                        {item.selectedFlavor !== "Padrão" && (
+                          <span>{item.selectedFlavor}</span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => onRemoveItem(index)}
+                        className="self-start text-xs font-medium text-red-500 hover:underline flex items-center gap-1 mt-1"
+                      >
+                        <Trash2 className="h-3 w-3" /> Remover
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </ScrollArea>
 
-          {items.length > 0 && (
-            <div className="border-t border-border p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-foreground">Total</span>
-                <span className="text-xl font-semibold text-primary">{formatPrice(totalCart)}</span>
+            <div className="space-y-4 pt-4">
+              <Separator />
+              
+              {/* Input Nome do Cliente */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Seu Nome (para o pedido)</Label>
+                <Input 
+                  id="name" 
+                  placeholder="Ex: Ana Silva" 
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
               </div>
-              <Button size="lg" className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-                Finalizar Pedido via WhatsApp
-              </Button>
+
+              <div className="flex justify-between text-lg font-semibold">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
+              </div>
+
+              <SheetFooter>
+                <Button 
+                  className="w-full h-12 text-lg bg-green-600 hover:bg-green-700 text-white" 
+                  onClick={handleCheckout}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Processando..." : (
+                    <>
+                      <Send className="mr-2 h-5 w-5" />
+                      Finalizar no WhatsApp
+                    </>
+                  )}
+                </Button>
+              </SheetFooter>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center space-y-2 text-muted-foreground">
+            <ShoppingBag className="h-12 w-12 opacity-20" />
+            <p>Seu carrinho está vazio</p>
+            <Button variant="link" onClick={onClose}>
+              Ver Cardápio
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }
