@@ -6,6 +6,7 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { InsumosTable } from "@/components/admin/insumos-table"
 import { InsumoModal } from "@/components/admin/insumo-modal"
 import type { Insumo } from "@/lib/admin-types"
+import { API_URL } from "@/lib/api-config"
 
 export default function InsumosPage() {
   const [insumos, setInsumos] = useState<Insumo[]>([])
@@ -15,7 +16,7 @@ export default function InsumosPage() {
 
   const fetchInsumos = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/ingredients")
+      const response = await fetch(`${API_URL}/api/ingredients`)
       const data = await response.json()
 
       const mappedData = data.map((item: any) => ({

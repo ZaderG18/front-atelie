@@ -6,6 +6,7 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { ProdutosTable } from "@/components/admin/produtos-table"
 import { ProdutoModal } from "@/components/admin/produto-modal"
 import type { Produto } from "@/lib/admin-types"
+import { API_URL } from "@/lib/api-config"
 
 export default function ProdutosPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -16,7 +17,7 @@ export default function ProdutosPage() {
   // 1. BUSCAR PRODUTOS
   const fetchProdutos = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/products")
+      const response = await fetch(`${API_URL}/api/products`)
       const data = await response.json()
 
       const mappedData = data.map((item: any) => ({

@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ThemeToggle } from "@/components/theme-toggle" 
+import { ThemeToggle } from "@/components/theme-toggle"
+import { API_URL } from "@/lib/api-config" 
 import {
   Package, ShoppingBag, AlertTriangle, DollarSign, Clock,
   CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight, ChefHat, Eye
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/dashboard/stats")
+        const response = await fetch(`${API_URL}/api/dashboard/stats`)
         const data = await response.json()
         setStats(data) // O Laravel já entrega tudo pronto!
       } catch (error) {

@@ -9,6 +9,7 @@ import { ProductModal } from "@/components/product-modal"
 import { CartDrawer } from "@/components/cart-drawer"
 import { MobileMenu } from "@/components/mobile-menu"
 import type { Product, CartItem } from "@/lib/types"
+import { API_URL } from "@/lib/api-config"
 
 // Importamos a lista estática para usar APENAS como Backup (Fallback)
 import { products as STATIC_PRODUCTS } from "@/lib/products"
@@ -32,7 +33,7 @@ export default function Home() {
         console.log("📡 Tentando conectar com Laravel...")
         
         // Tenta buscar no Laravel (usando IP 127.0.0.1 para evitar erro no Windows)
-        const response = await fetch("http://127.0.0.1:8000/api/products")
+        const response = await fetch(`${API_URL}/api/products`)
         
         if (!response.ok) throw new Error("API não respondeu")
         
