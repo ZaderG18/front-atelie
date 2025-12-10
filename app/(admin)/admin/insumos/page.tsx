@@ -53,7 +53,7 @@ export default function InsumosPage() {
         min_stock_alert: dadosInsumo.estoqueMinimo
       }
 
-      let url = "http://127.0.0.1:8000/api/ingredients"
+      let url =`${API_URL}/api/ingredients`
       let method = "POST"
 
       if (editingInsumo) {
@@ -86,7 +86,7 @@ export default function InsumosPage() {
 
   const handleDeleteInsumo = async (id: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/ingredients/${id}`, {
+      const response = await fetch(`${API_URL}/api/ingredients/${id}`, {
         method: "DELETE",
         headers: { "Accept": "application/json" } 
       })

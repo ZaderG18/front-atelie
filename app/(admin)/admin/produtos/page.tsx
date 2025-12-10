@@ -58,7 +58,7 @@ export default function ProdutosPage() {
         formData.append("image", data.arquivoImagem)
       }
 
-      let url = "http://127.0.0.1:8000/api/products"
+      let url =`${API_URL}/api/products`
       let method = "POST"
 
       if (produtoEditando) {
@@ -90,7 +90,7 @@ export default function ProdutosPage() {
   const handleDeleteProduto = async (id: string) => {
     if (!confirm("Tem certeza?")) return
     try {
-      await fetch(`http://127.0.0.1:8000/api/products/${id}`, { method: "DELETE" })
+      await fetch(`${API_URL}/api/products/${id}`, { method: "DELETE" })
       setProdutos(produtos.filter((p) => p.id !== id))
     } catch (error) {
       console.error("Erro ao deletar:", error)
