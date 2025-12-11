@@ -1,6 +1,7 @@
 export type ProductStatus = "pronta-entrega" | "sob-encomenda"
 
-export type Category = "bolos-festivos" | "bolos-no-pote" | "docinhos" | "salgados"
+// Adicionei 'outros' para garantir que categorias novas não quebrem
+export type Category = "bolos-festivos" | "bolos-no-pote" | "docinhos" | "salgados" | "outros"
 
 export interface Product {
   id: string
@@ -15,12 +16,18 @@ export interface Product {
   additionals: { name: string; price: number }[]
 }
 
+// Interface atualizada para funcionar com o CartDrawer novo
 export interface CartItem {
-  product: Product
-  weight: string
-  flavor: string
-  additionals: string[]
-  observation: string
-  totalPrice: number
+  id: string          
+  name: string        
+  image: string       
+  basePrice: number   
+  
+  // Opções Selecionadas (Opcionais pois nem todo produto tem peso/sabor)
+  selectedWeight?: { label: string; priceModifier: number }
+  selectedFlavor?: string
+  additionals?: { name: string; price: number }[] 
+  
+  observation?: string
   quantity: number
 }

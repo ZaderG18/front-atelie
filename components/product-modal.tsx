@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { X, Plus, Minus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils" // Usando nossa função global
 import type { Product, CartItem } from "@/lib/types"
 
 interface ProductModalProps {
@@ -38,34 +38,37 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
   }
 
   const calculateTotal = () => {
-    const basePrice = product.basePrice + product.weights[selectedWeight].priceModifier
+    const weightPrice = product.weights[selectedWeight]?.priceModifier || 0
+    const basePrice = product.basePrice + weightPrice
     const additionalsTotal = selectedAdditionals.reduce((sum, idx) => sum + product.additionals[idx].price, 0)
     return (basePrice + additionalsTotal) * quantity
   }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(price)
-  }
-
   const handleAddToCart = () => {
+    // 🛠️ CORREÇÃO: Montando o objeto no formato NOVO (Plano)
     onAddToCart({
-      product,
-      weight: product.weights[selectedWeight].label,
-      flavor: product.flavors[selectedFlavor],
-      additionals: selectedAdditionals.map((idx) => product.additionals[idx].name),
+      id: product.id,
+      name: product.name,
+      image: product.image,
+      basePrice: product.basePrice,
+      
+      // Passamos o objeto inteiro {label, price} em vez de só a string
+      selectedWeight: product.weights[selectedWeight], 
+      selectedFlavor: product.flavors[selectedFlavor],
+      
+      // Mapeamos para enviar os objetos dos adicionais
+      additionals: selectedAdditionals.map((idx) => product.additionals[idx]),
+      
       observation,
-      totalPrice: calculateTotal(),
       quantity,
     })
+    onClose()
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-background shadow-2xl">
         <button
           onClick={onClose}
@@ -76,62 +79,70 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
         </button>
 
         <div className="aspect-video w-full overflow-hidden">
-          <img src={product.image || "/placeholder.svg"} alt={product.name} className="h-full w-full object-cover" />
+          <img 
+            src={product.image || "/placeholder-cake.jpg"} 
+            alt={product.name} 
+            className="h-full w-full object-cover" 
+          />
         </div>
 
         <div className="p-6">
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-semibold text-foreground">
+          <h2 className="font-serif text-2xl font-semibold text-foreground">
             {product.name}
           </h2>
           <p className="mt-2 text-muted-foreground">{product.description}</p>
 
-          {/* Weight Selection */}
-          <div className="mt-6">
-            <h3 className="mb-3 text-sm font-medium text-foreground">Escolha o Tamanho</h3>
-            <div className="flex flex-wrap gap-2">
-              {product.weights.map((weight, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedWeight(idx)}
-                  className={cn(
-                    "rounded-xl border px-4 py-2 text-sm transition-all",
-                    selectedWeight === idx
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground hover:border-primary/50",
-                  )}
-                >
-                  {weight.label}
-                  {weight.priceModifier > 0 && (
-                    <span className="ml-1 text-xs opacity-75">(+{formatPrice(weight.priceModifier)})</span>
-                  )}
-                </button>
-              ))}
+          {/* Seleção de Tamanho/Peso */}
+          {product.weights && product.weights.length > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-medium text-foreground">Escolha o Tamanho</h3>
+              <div className="flex flex-wrap gap-2">
+                {product.weights.map((weight, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedWeight(idx)}
+                    className={cn(
+                      "rounded-xl border px-4 py-2 text-sm transition-all",
+                      selectedWeight === idx
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:border-primary/50",
+                    )}
+                  >
+                    {weight.label}
+                    {weight.priceModifier > 0 && (
+                      <span className="ml-1 text-xs opacity-75">(+{formatCurrency(weight.priceModifier)})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Flavor Selection */}
-          <div className="mt-6">
-            <h3 className="mb-3 text-sm font-medium text-foreground">Escolha a Massa</h3>
-            <div className="flex flex-wrap gap-2">
-              {product.flavors.map((flavor, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedFlavor(idx)}
-                  className={cn(
-                    "rounded-xl border px-4 py-2 text-sm transition-all",
-                    selectedFlavor === idx
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground hover:border-primary/50",
-                  )}
-                >
-                  {flavor}
-                </button>
-              ))}
+          {/* Seleção de Sabor */}
+          {product.flavors && product.flavors.length > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-medium text-foreground">Escolha a Massa/Sabor</h3>
+              <div className="flex flex-wrap gap-2">
+                {product.flavors.map((flavor, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedFlavor(idx)}
+                    className={cn(
+                      "rounded-xl border px-4 py-2 text-sm transition-all",
+                      selectedFlavor === idx
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:border-primary/50",
+                    )}
+                  >
+                    {flavor}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Additionals */}
-          {product.additionals.length > 0 && (
+          {/* Adicionais */}
+          {product.additionals && product.additionals.length > 0 && (
             <div className="mt-6">
               <h3 className="mb-3 text-sm font-medium text-foreground">Adicionais</h3>
               <div className="space-y-2">
@@ -147,18 +158,18 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
                     )}
                   >
                     <span className="text-foreground">{additional.name}</span>
-                    <span className="text-muted-foreground">+{formatPrice(additional.price)}</span>
+                    <span className="text-muted-foreground">+{formatCurrency(additional.price)}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Observation */}
+          {/* Observações */}
           <div className="mt-6">
             <h3 className="mb-3 text-sm font-medium text-foreground">Observações</h3>
             <Textarea
-              placeholder="Alguma observação especial? (ex: sem glúten, alergia, etc.)"
+              placeholder="Alguma observação especial? (ex: sem glúten, alergia, escrever Parabéns...)"
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
               className="rounded-xl resize-none"
@@ -166,7 +177,7 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
             />
           </div>
 
-          {/* Quantity */}
+          {/* Quantidade */}
           <div className="mt-6 flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">Quantidade</span>
             <div className="flex items-center gap-3">
@@ -188,11 +199,11 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
             </div>
           </div>
 
-          {/* Total and Add to Cart */}
+          {/* Botão Final */}
           <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
             <div>
               <span className="text-sm text-muted-foreground">Total</span>
-              <p className="text-2xl font-semibold text-primary">{formatPrice(calculateTotal())}</p>
+              <p className="text-2xl font-semibold text-primary">{formatCurrency(calculateTotal())}</p>
             </div>
             <Button
               size="lg"
