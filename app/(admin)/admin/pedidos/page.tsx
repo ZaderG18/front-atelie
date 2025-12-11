@@ -26,6 +26,11 @@ export default function PedidosPage() {
 
   useEffect(() => {
     fetchPedidos()
+    
+    // Atualiza a cada 30 segundos
+    const interval = setInterval(fetchPedidos, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const handleStatusChange = async (id: number, newStatus: string) => {
