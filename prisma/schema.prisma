@@ -1,0 +1,76 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+
+// --- Cardápio (Produtos) ---
+model Product {
+  id               Int      @id @default(autoincrement())
+  name             String
+  description      String?
+  sale_price       Decimal  @db.Decimal(10, 2) // Preço de Venda
+  category         String   // bolos_festivos, docinhos, etc
+  image_url        String?
+  is_made_to_order Boolean  @default(false) // Sob encomenda?
+  is_active        Boolean  @default(true)  // Visível na vitrine?
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("products")
+}
+
+// --- Estoque (Insumos) ---
+model Ingredient {
+  id              Int      @id @default(autoincrement())
+  name            String
+  unit            String   // kg, g, L, un
+  cost_price      Decimal  @db.Decimal(10, 2) // Custo
+  stock_quantity  Decimal  @db.Decimal(10, 3) // Estoque atual
+  min_stock_alert Decimal? @db.Decimal(10, 3) // Alerta mínimo
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("ingredients")
+}
+
+// --- Pedidos ---
+model Order {
+  id             Int         @id @default(autoincrement())
+  customer_name  String
+  total_amount   Decimal     @db.Decimal(10, 2)
+  status         String      @default("pending") // pending, confirmed, delivered, canceled
+  payment_method String?     // pix, card, money
+  origin         String?     // whatsapp, balcao, site
+  notes          String?
+  
+  items          OrderItem[] // Relação com os itens
+
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+// Itens de cada Pedido
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  order_id     Int
+  product_id   Int?     // Opcional, caso o produto seja deletado depois
+  product_name String   // Salvamos o nome para histórico
+  quantity     Int
+  price        Decimal  @db.Decimal(10, 2) // Preço na época da compra
+
+  order        Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
