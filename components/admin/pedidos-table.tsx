@@ -10,33 +10,38 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, CheckCircle2, XCircle, Clock, Truck } from "lucide-react"
+import { MoreHorizontal, CheckCircle2, XCircle, Clock, Truck, Trash2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
-import { updateOrderStatus, deleteOrder } from "@/app/_actions/orders"
-import { Trash2 } from "lucide-react"
+// Note que removemos o import de updateOrderStatus aqui, pois ele virá via props
+import { deleteOrder } from "@/app/_actions/orders"
 import { useState } from "react"
 
 interface Pedido {
   id: number
   customer_name: string
   total_amount: string | number
-  status: "pending" | "confirmed" | "delivered" | "canceled"
+  status: string // Simplifiquei para string para evitar conflito com o banco
   created_at: string
   items: any[]
 }
 
 interface PedidosTableProps {
   pedidos: Pedido[]
+  // ADICIONADO: Agora o componente aceita a função enviada pelo Pai
+  onStatusChange: (id: number, status: string) => Promise<any>
 }
 
-export function PedidosTable({ pedidos }: PedidosTableProps) {
+export function PedidosTable({ pedidos, onStatusChange }: PedidosTableProps) {
   const [isUpdating, setIsUpdating] = useState<number | null>(null)
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     setIsUpdating(id)
     try {
-      const result = await updateOrderStatus(id, newStatus)
-      if (!result.success) {
+      // Usamos a função que veio via PROPS, não o import direto
+      const result = await onStatusChange(id, newStatus)
+      
+      // O result pode vir de formatos diferentes dependendo da action, garantimos o tratamento
+      if (result && result.success === false) {
         alert("Erro ao atualizar status")
       }
     } catch (error) {
@@ -68,25 +73,25 @@ export function PedidosTable({ pedidos }: PedidosTableProps) {
     switch (status) {
       case "pending":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-0">
             <Clock className="w-3 h-3 mr-1" /> Pendente
           </Badge>
         )
       case "confirmed":
         return (
-          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">
             <CheckCircle2 className="w-3 h-3 mr-1" /> Confirmado
           </Badge>
         )
       case "delivered":
         return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">
             <Truck className="w-3 h-3 mr-1" /> Entregue
           </Badge>
         )
       case "canceled":
         return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
             <XCircle className="w-3 h-3 mr-1" /> Cancelado
           </Badge>
         )
@@ -100,7 +105,7 @@ export function PedidosTable({ pedidos }: PedidosTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead className="w-[80px]">ID</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Data</TableHead>
             <TableHead>Itens (Resumo)</TableHead>
@@ -113,17 +118,23 @@ export function PedidosTable({ pedidos }: PedidosTableProps) {
           {pedidos.map((pedido) => (
             <TableRow key={pedido.id}>
               <TableCell className="font-medium">#{pedido.id}</TableCell>
-              <TableCell>{pedido.customer_name}</TableCell>
+              <TableCell className="font-medium">{pedido.customer_name}</TableCell>
               <TableCell>
-                {new Date(pedido.created_at).toLocaleDateString("pt-BR")}
-                <span className="text-xs text-muted-foreground block">
-                  {new Date(pedido.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </span>
+                <div className="flex flex-col">
+                    <span className="text-sm">
+                        {new Date(pedido.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {new Date(pedido.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                </div>
               </TableCell>
-              <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
-                {pedido.items && pedido.items.length > 0
-                  ? pedido.items.map((i) => `${i.quantity}x ${i.product_name || "Item"}`).join(", ")
-                  : "Sem detalhes"}
+              <TableCell className="max-w-[200px] text-sm text-muted-foreground">
+                <span className="truncate block" title={pedido.items && pedido.items.length > 0 ? pedido.items.map((i: any) => `${i.quantity}x ${i.product_name}`).join(", ") : ""}>
+                    {pedido.items && pedido.items.length > 0
+                    ? pedido.items.map((i: any) => `${i.quantity}x ${i.product_name || "Item"}`).join(", ")
+                    : "Sem detalhes"}
+                </span>
               </TableCell>
               <TableCell className="font-bold">{formatCurrency(Number(pedido.total_amount))}</TableCell>
               <TableCell>{getStatusBadge(pedido.status)}</TableCell>
@@ -138,19 +149,19 @@ export function PedidosTable({ pedidos }: PedidosTableProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Alterar Status</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => handleStatusChange(pedido.id, "confirmed")}>
-                      ✅ Confirmar Pedido
+                      <CheckCircle2 className="w-4 h-4 mr-2 text-blue-500" /> Confirmar Pedido
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleStatusChange(pedido.id, "delivered")}>
-                      🚚 Marcar Entregue
+                      <Truck className="w-4 h-4 mr-2 text-green-500" /> Marcar Entregue
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleStatusChange(pedido.id, "canceled")}
-                      className="text-red-600"
+                      className="text-red-600 focus:text-red-600"
                     >
-                      🚫 Cancelar
+                      <XCircle className="w-4 h-4 mr-2" /> Cancelar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(pedido.id)} className="text-red-600">
-                      <Trash2 className="w-3 h-3 mr-2" /> Deletar
+                    <DropdownMenuItem onClick={() => handleDelete(pedido.id)} className="text-red-600 focus:text-red-600 border-t mt-1">
+                      <Trash2 className="w-4 h-4 mr-2" /> Deletar Pedido
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

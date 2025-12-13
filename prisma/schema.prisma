@@ -5,74 +5,241 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  // Voltamos a definir as URLs aqui, do jeito clássico
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// =========================================================
+// 1. USUÁRIOS E CLIENTES (CRM)
+// =========================================================
 
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("admin") // admin, employee
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-// --- Cardápio (Produtos) ---
-model Product {
-  id               Int      @id @default(autoincrement())
-  name             String
-  description      String?
-  sale_price       Decimal  @db.Decimal(10, 2) // Preço de Venda
-  category         String   // bolos_festivos, docinhos, etc
-  image_url        String?
-  is_made_to_order Boolean  @default(false) // Sob encomenda?
-  is_active        Boolean  @default(true)  // Visível na vitrine?
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
-  @@map("products")
+  @@map("users")
 }
 
-// --- Estoque (Insumos) ---
+model Customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String?  // Importante para WhatsApp
+  email       String?
+  address     String?  // Endereço de entrega padrão
+  birthday    DateTime? // Para mandar promoções
+  notes       String?  // "Não gosta de canela", etc.
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("customers")
+}
+
+// =========================================================
+// 2. ESTOQUE E INSUMOS (FICHA TÉCNICA)
+// =========================================================
+
 model Ingredient {
   id              Int      @id @default(autoincrement())
-  name            String
-  unit            String   // kg, g, L, un
-  cost_price      Decimal  @db.Decimal(10, 2) // Custo
-  stock_quantity  Decimal  @db.Decimal(10, 3) // Estoque atual
-  min_stock_alert Decimal? @db.Decimal(10, 3) // Alerta mínimo
-  
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  name            String   // Ex: Leite Condensado, Farinha
+  unit            String   // kg, g, l, un, ml
+  costPrice       Decimal  @map("cost_price") @db.Decimal(10, 2) // Quanto você paga
+  stockQuantity   Decimal  @map("stock_quantity") @db.Decimal(10, 2) // Quanto tem
+  minStockAlert   Decimal  @map("min_stock_alert") @db.Decimal(10, 2) // Qtd mínima para avisar
+  updatedAt       DateTime @updatedAt
+
+  // Relação: Um insumo pode estar em vários produtos (Ficha Técnica)
+  products        ProductRecipe[] 
 
   @@map("ingredients")
 }
 
-// --- Pedidos ---
-model Order {
-  id             Int         @id @default(autoincrement())
-  customer_name  String
-  total_amount   Decimal     @db.Decimal(10, 2)
-  status         String      @default("pending") // pending, confirmed, delivered, canceled
-  payment_method String?     // pix, card, money
-  origin         String?     // whatsapp, balcao, site
-  notes          String?
+// Tabela Pivô: Quanto de cada ingrediente vai em cada produto?
+// Ex: Bolo de 1kg usa 0.5kg de farinha
+model ProductRecipe {
+  id            Int        @id @default(autoincrement())
+  productId     Int        @map("product_id")
+  product       Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   
-  items          OrderItem[] // Relação com os itens
+  ingredientId  Int        @map("ingredient_id")
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id])
+  
+  quantity      Decimal    @db.Decimal(10, 3) // Quantidade usada na receita
 
-  created_at     DateTime    @default(now())
-  updated_at     DateTime    @updatedAt
+  @@map("product_recipes")
+}
+
+// =========================================================
+// 3. CATÁLOGO E PERSONALIZAÇÃO (O CORAÇÃO DA CONFEITARIA)
+// =========================================================
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    // Bolos de Pote, Bolos Festivos, Docinhos
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id             Int       @id @default(autoincrement())
+  categoryId     Int?      @map("category_id")
+  category       Category? @relation(fields: [categoryId], references: [id])
+  
+  name           String
+  description    String?
+  basePrice      Decimal   @map("base_price") @db.Decimal(10, 2) // Preço base ou fixo
+  imageUrl       String?   @map("image_url")
+  
+  // Flags de controle
+  isMadeToOrder  Boolean   @default(false) @map("is_made_to_order") // É sob encomenda? (Abre opções)
+  isActive       Boolean   @default(true) @map("is_active") // Aparece na vitrine?
+
+  // Relações para personalização
+  sizes          ProductSize[]    // Pesos disponíveis (1kg, 2kg...)
+  flavors        ProductFlavor[]  // Recheios disponíveis
+  extras         ProductExtra[]   // Adicionais (Topper, Glitter)
+  
+  // Ficha técnica (quais ingredientes gasta)
+  recipe         ProductRecipe[]
+  
+  orderItems     OrderItem[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("products")
+}
+
+// Opções de Tamanho/Peso (Ex: 1kg, 2kg, fatia)
+model ProductSize {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name        String   // Ex: "1 kg (Aro 15)", "2 kg"
+  priceAddon  Decimal  @default(0) @map("price_addon") @db.Decimal(10, 2) // Quanto soma no preço base?
+  
+  orderItems  OrderItem[]
+
+  @@map("product_sizes")
+}
+
+// Opções de Sabor/Recheio/Massa
+model ProductFlavor {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name        String   // Ex: "Ninho com Morango", "Brigadeiro Belga"
+  type        String   // "filling" (recheio) ou "dough" (massa)
+  priceAddon  Decimal  @default(0) @map("price_addon") @db.Decimal(10, 2) // Recheios nobres custam mais
+
+  orderItemsFilling OrderItem[] @relation("FillingRelation")
+  orderItemsDough   OrderItem[] @relation("DoughRelation")
+
+  @@map("product_flavors")
+}
+
+// Opções de Adicionais
+model ProductExtra {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name        String   // Ex: "Topper Personalizado", "Caixa Presente"
+  price       Decimal  @db.Decimal(10, 2)
+  
+  @@map("product_extras")
+}
+
+// =========================================================
+// 4. VENDAS E PEDIDOS
+// =========================================================
+
+enum OrderStatus {
+  PENDING    // Pendente de confirmação/pagamento
+  CONFIRMED  // Pago/Confirmado
+  PREPARING  // Em produção (mão na massa)
+  READY      // Pronto para retirada/entrega
+  DELIVERED  // Entregue
+  CANCELED   // Cancelado
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+}
+
+enum OrderOrigin {
+  WHATSAPP
+  INSTAGRAM
+  SITE
+  BALCAO
+  IFOOD
+}
+
+model Order {
+  id             Int           @id @default(autoincrement())
+  
+  // Cliente (Opcional, pois pode ser venda rápida de balcão)
+  customerId     Int?          @map("customer_id")
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  customerName   String        @map("customer_name") // Backup caso delete o cliente ou venda avulsa
+  
+  status         OrderStatus   @default(PENDING)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(10, 2)
+  
+  origin         OrderOrigin   @default(WHATSAPP)
+  paymentMethod  PaymentMethod @map("payment_method")
+  
+  // Logística
+  deliveryDate   DateTime?     @map("delivery_date") // Data da festa/entrega
+  deliveryAddress String?      @map("delivery_address")
+  deliveryFee    Decimal       @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  
+  notes          String?       // "Escrever Parabéns Arthur no bolo"
+
+  items          OrderItem[]
+  
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   @@map("orders")
 }
 
-// Itens de cada Pedido
 model OrderItem {
-  id           Int      @id @default(autoincrement())
-  order_id     Int
-  product_id   Int?     // Opcional, caso o produto seja deletado depois
-  product_name String   // Salvamos o nome para histórico
-  quantity     Int
-  price        Decimal  @db.Decimal(10, 2) // Preço na época da compra
+  id             Int      @id @default(autoincrement())
+  orderId        Int      @map("order_id")
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId      Int      @map("product_id")
+  product        Product  @relation(fields: [productId], references: [id])
+  
+  // Snapshots (Cópia dos nomes caso o produto mude depois)
+  productName    String   @map("product_name") 
+  quantity       Int
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(10, 2) // Preço final deste item somado
+  totalPrice     Decimal  @map("total_price") @db.Decimal(10, 2)
 
-  order        Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  // Personalização Escolhida (Opcionais, pois pode ser um produto simples)
+  sizeId         Int?           @map("size_id")
+  size           ProductSize?   @relation(fields: [sizeId], references: [id])
+  
+  doughId        Int?           @map("dough_id")
+  dough          ProductFlavor? @relation("DoughRelation", fields: [doughId], references: [id])
+  
+  fillingId      Int?           @map("filling_id")
+  filling        ProductFlavor? @relation("FillingRelation", fields: [fillingId], references: [id])
+
+  observation    String?  // Obs específica do item: "Sem morango na decoração"
 
   @@map("order_items")
 }

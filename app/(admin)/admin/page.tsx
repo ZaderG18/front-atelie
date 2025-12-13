@@ -1,91 +1,32 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { API_URL } from "@/lib/api-config"
-import { formatCurrency } from "@/lib/utils" // Usando nossa função centralizada
+import { formatCurrency } from "@/lib/utils"
+import { getDashboardStats } from "@/app/_actions/dashboard"
+import Link from "next/link"
 import {
   Package, ShoppingCart, AlertTriangle, DollarSign, Clock, CheckCircle2,
   XCircle, ArrowUpRight, ChefHat, TrendingUp, Calendar, Zap, PlusCircle, ClipboardList
 } from "lucide-react"
-import Link from "next/link"
 
-// Tipagem para garantir que o Front entenda o que vem do Back
-interface DashboardStats {
-  faturamentoMes: number
-  faturamentoVariacao: number
-  ticketMedio: number
-  pedidosHoje: number
-  pedidosPendentes: number
-  totalProdutos: number
-  produtosAtivos: number
-  totalInsumos: number
-  insumosBaixoEstoque: number
-  recentOrders: any[]
-  listaInsumosCriticos: any[]
-}
+export const dynamic = 'force-dynamic'
 
-// Estado inicial zerado (sem mocks para não confundir)
-const INITIAL_STATS: DashboardStats = {
-  faturamentoMes: 0,
-  faturamentoVariacao: 0,
-  ticketMedio: 0,
-  pedidosHoje: 0,
-  pedidosPendentes: 0,
-  totalProdutos: 0,
-  produtosAtivos: 0,
-  totalInsumos: 0,
-  insumosBaixoEstoque: 0,
-  recentOrders: [],
-  listaInsumosCriticos: [],
-}
-
+// Atualizamos para verificar os ENUMS novos (Maiúsculos)
 function getStatusConfig(status: string) {
   switch (status) {
-    case "pending": return { label: "Pendente", icon: Clock, className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800" }
-    case "confirmed": return { label: "Confirmado", icon: CheckCircle2, className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" }
-    case "delivered": return { label: "Entregue", icon: CheckCircle2, className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" }
-    case "canceled": return { label: "Cancelado", icon: XCircle, className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800" }
+    case "PENDING": return { label: "Pendente", icon: Clock, className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800" }
+    case "CONFIRMED": return { label: "Confirmado", icon: CheckCircle2, className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800" }
+    case "DELIVERED": return { label: "Entregue", icon: CheckCircle2, className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" }
+    case "CANCELED": return { label: "Cancelado", icon: XCircle, className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800" }
     default: return { label: status, icon: Clock, className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400" }
   }
 }
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>(INITIAL_STATS)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/dashboard/stats`)
-        if (!response.ok) throw new Error("Falha ao buscar dados")
-        const data = await response.json()
-        setStats(data)
-      } catch (error) {
-        console.error("Erro no dashboard:", error)
-        // Opcional: Adicionar um toast de erro aqui
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-100 dark:bg-slate-950">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-slate-500">Carregando indicadores...</p>
-        </div>
-      </div>
-    )
-  }
+export default async function AdminDashboard() {
+  const stats = await getDashboardStats()
 
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-950">
@@ -118,13 +59,13 @@ export default function AdminDashboard() {
                 <div className="p-2 bg-white/20 rounded-lg"><DollarSign className="h-4 w-4" /></div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{formatCurrency(Number(stats.faturamentoMes))}</div>
+                <div className="text-3xl font-bold">{formatCurrency(stats.faturamentoMes)}</div>
                 <div className="flex items-center gap-1 mt-2">
                   <div className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
                     <ArrowUpRight className="h-3 w-3" />
-                    <span>+{stats.faturamentoVariacao}%</span>
+                    <span>Calculado</span>
                   </div>
-                  <span className="text-xs text-emerald-100">vs mês anterior</span>
+                  <span className="text-xs text-emerald-100">baseado em pedidos</span>
                 </div>
               </CardContent>
             </Card>
@@ -140,7 +81,7 @@ export default function AdminDashboard() {
                 <div className="text-3xl font-bold">{stats.pedidosHoje}</div>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge className="bg-amber-400 text-amber-900 border-0 text-xs font-semibold hover:bg-amber-500">
-                    {stats.pedidosPendentes} pendentes
+                    {stats.pedidosPendentes} pendentes totais
                   </Badge>
                 </div>
               </CardContent>
@@ -154,7 +95,7 @@ export default function AdminDashboard() {
                 <div className="p-2 bg-white/20 rounded-lg"><TrendingUp className="h-4 w-4" /></div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{formatCurrency(Number(stats.ticketMedio))}</div>
+                <div className="text-3xl font-bold">{formatCurrency(stats.ticketMedio)}</div>
                 <p className="text-xs text-violet-100 mt-2">{stats.produtosAtivos} produtos ativos</p>
               </CardContent>
             </Card>
@@ -175,7 +116,7 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Atalhos Rápidos (Mantive igual ao seu código) */}
+          {/* Atalhos Rápidos */}
           <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
@@ -235,14 +176,14 @@ export default function AdminDashboard() {
                         <div key={pedido.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 border border-slate-100 dark:border-slate-700/50 group">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-sm group-hover:scale-110 transition-transform">
-                              {pedido.customer_name?.charAt(0)?.toUpperCase() || "?"}
+                              {pedido.customerName?.charAt(0)?.toUpperCase() || "?"}
                             </div>
                             <div>
                               <span className="font-semibold text-slate-800 dark:text-slate-200 block">
-                                #{pedido.id} - {pedido.customer_name}
+                                #{pedido.id} - {pedido.customerName}
                               </span>
                               <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {new Date(pedido.created_at).toLocaleDateString('pt-BR')}
+                                {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}
                               </p>
                             </div>
                           </div>
@@ -252,7 +193,7 @@ export default function AdminDashboard() {
                               {statusConfig.label}
                             </Badge>
                             <span className="font-bold text-slate-800 dark:text-slate-200 min-w-[90px] text-right">
-                              {formatCurrency(Number(pedido.total_amount))}
+                              {formatCurrency(Number(pedido.totalAmount))}
                             </span>
                           </div>
                         </div>
@@ -283,13 +224,13 @@ export default function AdminDashboard() {
                 {stats.listaInsumosCriticos && stats.listaInsumosCriticos.length > 0 ? (
                   <div className="space-y-4">
                     {stats.listaInsumosCriticos.map((insumo: any) => {
-                      const porcentagem = (Number(insumo.stock_quantity) / Number(insumo.min_stock_alert)) * 100
+                      const porcentagem = (Number(insumo.stockQuantity) / Number(insumo.minStockAlert)) * 100
                       return (
                         <div key={insumo.id} className="space-y-2 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-100 dark:border-red-900/30">
                           <div className="flex justify-between items-center">
                             <span className="font-medium text-slate-700 dark:text-slate-300">{insumo.name}</span>
                             <span className="text-sm text-red-600 dark:text-red-400 font-semibold">
-                              {insumo.stock_quantity}/{insumo.min_stock_alert} {insumo.unit}
+                              {insumo.stockQuantity}/{insumo.minStockAlert} {insumo.unit}
                             </span>
                           </div>
                           <Progress value={porcentagem > 100 ? 100 : porcentagem} className="h-2 bg-red-200 dark:bg-red-900/50" />
