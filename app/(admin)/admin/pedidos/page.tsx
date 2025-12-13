@@ -1,11 +1,11 @@
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { PedidosTable } from "@/components/admin/pedidos-table"
-import { getOrders, updateOrderStatus } from "@/app/_actions/orders" // Importamos a action de update também
+import { getOrders, updateOrderStatus } from "@/app/_actions/orders"
 import { redirect } from "next/navigation"
 
-// Importamos o tipo para o TypeScript parar de reclamar
-import { Order } from "@prisma/client" 
+// 1. Importamos o OrderStatus para comparar corretamente
+import { Order, OrderStatus } from "@prisma/client" 
 
 export const dynamic = 'force-dynamic'
 
@@ -13,21 +13,29 @@ export default async function PedidosPage() {
   // 1. Busca os dados brutos
   const pedidos = await getOrders()
 
-  // 2. CORREÇÃO DO ERRO TS(7006): Tipamos explicitamente 'p' como 'Order' ou 'any'
-  // (Como removemos o 'use client', o TS muitas vezes já entende sozinho, mas aqui garantimos)
-  const pendingCount = pedidos.filter((p: Order) => p.status === "pending").length
-  const confirmedCount = pedidos.filter((p: Order) => p.status === "confirmed").length
-  const deliveredCount = pedidos.filter((p: Order) => p.status === "delivered").length
+  // 2. CORREÇÃO: Usamos o Enum (OrderStatus.PENDING) ou a string Maiúscula ("PENDING")
+  const pendingCount = pedidos.filter((p) => p.status === OrderStatus.PENDING).length
+  const confirmedCount = pedidos.filter((p) => p.status === OrderStatus.CONFIRMED).length
+  const deliveredCount = pedidos.filter((p) => p.status === OrderStatus.DELIVERED).length
 
-  // 3. Formatação para a Tabela (Essencial para passar para Client Components)
-  const formattedOrders = pedidos.map((order: string | any) => ({
-    ...order,
+  // 3. Formatação (ADAPTER: Banco Novo -> Frontend Antigo)
+  // O banco agora retorna camelCase (totalAmount), mas sua tabela espera snake_case (total_amount)
+  const formattedOrders = pedidos.map((order) => ({
     id: order.id,
-    total_amount: order.total_amount.toString(), // Decimal -> String
-    created_at: order.created_at.toISOString(),  // Date -> String
-    items: order.items.map((item: string | any) => ({
-      ...item,
-      price: Number(item.price),
+    
+    // Mapeando campos novos para nomes antigos para a tabela não quebrar
+    customer_name: order.customerName, 
+    total_amount: Number(order.totalAmount).toFixed(2), // Garante string formatada
+    status: order.status,
+    origin: order.origin,
+    created_at: order.createdAt.toISOString(),
+    
+    items: order.items.map((item) => ({
+      // Ajuste os nomes aqui também se necessário
+      id: item.id,
+      product_name: item.productName,
+      quantity: item.quantity,
+      price: Number(item.unitPrice), // O novo banco chama de unitPrice
     })),
   }))
 
@@ -73,7 +81,7 @@ export default async function PedidosPage() {
               </div>
             </div>
 
-            {/* Tabela recebendo os dados formatados e a função de update */}
+            {/* Tabela recebendo os dados formatados */}
             <PedidosTable 
                 pedidos={formattedOrders} 
                 onStatusChange={updateOrderStatus}

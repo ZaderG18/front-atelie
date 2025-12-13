@@ -243,3 +243,20 @@ model OrderItem {
 
   @@map("order_items")
 }
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Decimal  @db.Decimal(10, 2) // Importante usar Decimal para dinheiro
+  type        TransactionType
+  category    String
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  ENTRADA
+  SAIDA
+}

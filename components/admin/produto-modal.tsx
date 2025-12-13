@@ -11,21 +11,42 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { Produto, CategoriaAdmin } from "@/lib/admin-types"
-import { categoriasConfig } from "@/lib/admin-types"
+
+// Categorias hardcoded para não depender de arquivo externo
+const categoriasConfig = {
+  "bolos_festivos": "Bolos Festivos",
+  "bolos_no_pote": "Bolos de Pote",
+  "docinhos": "Docinhos",
+  "salgados": "Salgados",
+  "bebidas": "Bebidas",
+  "kits_festa": "Kits Festa"
+}
+
+// Interface alinhada com o Banco de Dados (Prisma)
+interface Produto {
+  id?: number
+  name: string
+  description: string
+  price: number
+  category: string
+  image: string
+  is_made_to_order: boolean
+  isActive?: boolean
+}
 
 interface ProdutoModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (produto: any) => void // Usamos any aqui para permitir o mapeamento flexível
+  onSave: (data: any) => void
   produto: Produto | null
 }
 
 export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalProps) {
+  // Estados locais do formulário
   const [nome, setNome] = useState("")
   const [descricao, setDescricao] = useState("")
   const [preco, setPreco] = useState("")
-  const [categoria, setCategoria] = useState<CategoriaAdmin>("bolos_festivos")
+  const [categoria, setCategoria] = useState("bolos_festivos")
   const [sobEncomenda, setSobEncomenda] = useState(false)
   const [visivelVitrine, setVisivelVitrine] = useState(true)
   
@@ -36,15 +57,18 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
 
   useEffect(() => {
     if (produto) {
-      setNome(produto.nome)
-      setDescricao(produto.descricao)
-      setPreco(produto.preco.toString())
-      setCategoria(produto.categoria)
-      setSobEncomenda(produto.sobEncomenda)
-      setVisivelVitrine(produto.visivelVitrine)
-      setImagemPreview(produto.imagem)
+      // CORREÇÃO: Mapeia do Inglês (Banco) para os estados do Form
+      setNome(produto.name)
+      setDescricao(produto.description || "")
+      setPreco(produto.price ? produto.price.toString() : "")
+      // Tenta achar a chave da categoria pelo nome, ou usa o slug direto
+      setCategoria(produto.category || "bolos_festivos") 
+      setSobEncomenda(produto.is_made_to_order)
+      setVisivelVitrine(produto.isActive !== false)
+      setImagemPreview(produto.image)
       setArquivoImagem(null)
     } else {
+      // Limpa o form
       setNome("")
       setDescricao("")
       setPreco("")
@@ -79,21 +103,16 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // CORREÇÃO: Mapeamos os campos do Form (PT) para a Server Action (EN/Schema)
+    // Devolve os dados formatados para o Pai
     onSave({
-      id: produto?.id, // Importante passar o ID se for edição!
-      
-      // Campos mapeados para bater com app/_actions/products.ts
-      name: nome, 
-      description: descricao,
-      sale_price: Number.parseFloat(preco), // A action espera 'sale_price'
-      category: categoria,
-      image_url: imagemPreview,             // A action espera 'image_url'
-      is_made_to_order: sobEncomenda,       // A action espera 'is_made_to_order'
-      is_active: visivelVitrine,            // A action espera 'is_active'
-      
-      // Dados extras
-      arquivoImagem: arquivoImagem,
+      nome, 
+      descricao,
+      preco: Number.parseFloat(preco), 
+      categoria,
+      imagem: imagemPreview,
+      arquivoImagem: arquivoImagem, // Manda o arquivo se tiver
+      sobEncomenda,
+      visivelVitrine,
     })
   }
 
@@ -151,11 +170,11 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
 
             <div className="space-y-2">
               <Label htmlFor="categoria" className="text-slate-700">Categoria</Label>
-              <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaAdmin)}>
+              <Select value={categoria} onValueChange={setCategoria}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(categoriasConfig).map(([value, config]) => (
-                    <SelectItem key={value} value={value}>{config.label}</SelectItem>
+                  {Object.entries(categoriasConfig).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
