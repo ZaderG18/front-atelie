@@ -1,13 +1,9 @@
 // prisma/seed.ts
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL!,
-    },
-  },
-})
+// Simples e limpo. Ele vai ler o .env sozinho.
+const prisma = new PrismaClient()
+
 const productsData = [
   {
     name: "Bolo de Ninho com Morango",
@@ -85,23 +81,25 @@ const productsData = [
 
 async function main() {
   console.log('🌱 Começando o seed...')
-
+  
   await prisma.product.deleteMany()
 
   for (const p of productsData) {
     await prisma.product.create({
       data: {
-        ...p,
-        is_active: true,
-      },
+        name: p.name,
+        description: p.description,
+        sale_price: p.sale_price,
+        category: p.category,
+        image_url: p.image_url,
+        is_made_to_order: p.is_made_to_order,
+        is_active: true
+      }
     })
   }
-
   console.log('✅ Banco populado com sucesso!')
 }
 
 main()
-  .catch(console.error)
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+  .catch((e) => { console.error(e); process.exit(1) })
+  .finally(async () => { await prisma.$disconnect() })
