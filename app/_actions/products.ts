@@ -1,79 +1,77 @@
-// app/_actions/products.ts
 'use server'
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 
-export async function saveProduct(formData: FormData) {
-  try {
-    const id = formData.get("id") as string | null
-    const name = formData.get("name") as string
-    const description = formData.get("description") as string
-    const sale_price = formData.get("sale_price") as string
-    const category = formData.get("category") as string
-    const is_made_to_order = formData.get("is_made_to_order") === "1"
-    const is_active = formData.get("is_active") === "1"
-    
-    // LOGICA DE IMAGEM:
-    // Aqui você integraria com Supabase Storage ou Vercel Blob.
-    // Por enquanto, vamos manter a URL antiga se não houver nova imagem, 
-    // ou usar um placeholder se for criação.
-    const image_url = "/placeholder-cake.jpg" 
+// Mapa para converter o "slug" do formulário antigo para o Nome da Categoria no banco
+const categoryMap: Record<string, string> = {
+  "bolos_festivos": "Bolos Festivos",
+  "bolos_no_pote": "Bolos de Pote",
+  "docinhos": "Docinhos",
+  "salgados": "Salgados",
+  "bebidas": "Bebidas",
+  "kits_festa": "Kits Festa"
+}
 
-    const data = {
-      name,
-      description,
-      sale_price: parseFloat(sale_price),
-      category,
-      is_made_to_order,
-      is_active,
-      // Se tivéssemos upload real, a URL viria daqui
-      image_url: image_url 
+export async function saveProduct(data: any) {
+  try {
+    // 1. Resolver a Categoria (String -> ID)
+    // O formulário manda "bolos_festivos", precisamos achar o ID da categoria "Bolos Festivos"
+    const categoryName = categoryMap[data.category] || data.category
+    
+    let category = await prisma.category.findFirst({
+      where: { name: { equals: categoryName, mode: 'insensitive' } }
+    })
+
+    // Se não achar a categoria, cria uma "Geral" ou usa a primeira que tiver para não dar erro
+    if (!category) {
+        category = await prisma.category.findFirst()
     }
 
-    if (id) {
-      // ATUALIZAR
+    // 2. Montar o objeto para o Prisma (Snake_case -> CamelCase)
+    const payload = {
+      name: data.name,
+      description: data.description,
+      basePrice: Number(data.sale_price),      // CORREÇÃO: sale_price -> basePrice
+      imageUrl: data.image_url,                // CORREÇÃO: image_url -> imageUrl
+      isMadeToOrder: data.is_made_to_order,    // CORREÇÃO: is_made_to_order -> isMadeToOrder
+      isActive: data.is_active !== false,      // Garante boleano
+      categoryId: category?.id                 // Conecta a categoria pelo ID
+    }
+
+    if (data.id) {
+      // Atualizar
       await prisma.product.update({
-        where: { id: Number(id) },
-        data: data, // Nota: Em um sistema real, só atualizamos a imagem se o usuário enviou uma nova
+        where: { id: Number(data.id) },
+        data: payload,
       })
     } else {
-      // CRIAR
+      // Criar
       await prisma.product.create({
-        data: data,
+        data: payload,
       })
     }
 
     revalidatePath("/admin/produtos")
-    revalidatePath("/admin") // Atualiza dashboard
+    revalidatePath("/") // Atualiza a vitrine também
     return { success: true }
+
   } catch (error) {
     console.error("Erro ao salvar produto:", error)
-    return { success: false, error: "Erro ao salvar no banco" }
+    return { success: false, error: "Falha ao salvar produto no banco de dados." }
   }
 }
 
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: number) {
   try {
     await prisma.product.delete({
-      where: { id: Number(id) },
+      where: { id: Number(id) }
     })
     revalidatePath("/admin/produtos")
+    revalidatePath("/")
     return { success: true }
   } catch (error) {
-    return { success: false, error: "Erro ao deletar" }
+    console.error("Erro ao deletar produto:", error)
+    return { success: false, error: "Erro ao deletar produto." }
   }
-}
-
-export async function toggleProductVisibility(id: string, currentStatus: boolean) {
-    try {
-        await prisma.product.update({
-            where: { id: Number(id) },
-            data: { is_active: !currentStatus }
-        })
-        revalidatePath("/admin/produtos")
-        return { success: true }
-    } catch (error) {
-        return { success: false, error: "Erro ao atualizar status" }
-    }
 }
