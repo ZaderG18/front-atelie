@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Trash2, ShoppingBag, Send } from "lucide-react"
 import type { CartItem } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
-import { API_URL } from "@/lib/api-config"
+import { createOrder } from "@/app/_actions/checkout"
 
 interface CartDrawerProps {
   items: CartItem[]
@@ -40,44 +40,37 @@ export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerP
     setIsSubmitting(true)
 
     try {
-      // 1. Monta o objeto para o Banco de Dados
-      const payload = {
+      const result = await createOrder({
         customer_name: customerName,
         total_amount: total,
         status: "pending",
         origin: "site_whatsapp",
-        payment_method: "combinar", // Será decidido no Zap
-        items: items.map(item => ({
+        payment_method: "combinar",
+        items: items.map((item) => ({
           product_id: item.id,
-          product_name: item.name, // Importante salvar o nome caso mude depois
+          product_name: item.name,
           price: (item.basePrice || 0) + (item.selectedWeight?.priceModifier || 0),
-          quantity: 1 // Por enquanto o carrinho não tem seletor de qtd por item, assume 1
-        }))
-      }
-
-      // 2. Envia para a API (Salva no Render/Supabase)
-      const response = await fetch(`${API_URL}/api/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(payload)
+          quantity: 1,
+        })),
       })
 
-      if (!response.ok) throw new Error("Erro ao salvar pedido")
+      if (!result.success) {
+        throw new Error(result.error || "Erro ao criar pedido")
+      }
 
-      const pedidoCriado = await response.json()
+      const pedidoCriado = result.order
 
-      // 3. Monta a mensagem do WhatsApp com o ID gerado
-      const message = `Olá! Me chamo *${customerName}* e acabei de fazer o pedido *#${pedidoCriado.id}* pelo site.\n\n` +
+      // Monta a mensagem do WhatsApp com o ID gerado
+      const message =
+        `Olá! Me chamo *${customerName}* e acabei de fazer o pedido *#${pedidoCriado.id}* pelo site.\n\n` +
         `Valor Total: *${formatCurrency(total)}*\n` +
         `Gostaria de combinar o pagamento e a entrega!`
 
       const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`
 
-      // 4. Redireciona e fecha
+      // Redireciona e fecha
       window.open(whatsappUrl, "_blank")
       onClose()
-      // Aqui você pode adicionar uma função para limpar o carrinho se quiser
-
     } catch (error) {
       console.error(error)
       alert("Houve um erro ao processar. Tente novamente ou chame no WhatsApp direto.")
@@ -104,13 +97,13 @@ export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerP
                   <div key={index} className="flex gap-4">
                     {/* Imagem pequena */}
                     <div className="h-16 w-16 overflow-hidden rounded-md border bg-muted">
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
+                      <img
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    
+
                     {/* Detalhes */}
                     <div className="flex flex-1 flex-col justify-between">
                       <div className="flex justify-between">
@@ -119,14 +112,10 @@ export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerP
                           {formatCurrency((item.basePrice || 0) + (item.selectedWeight?.priceModifier || 0))}
                         </span>
                       </div>
-                      
+
                       <div className="text-xs text-muted-foreground">
-                        {item.selectedWeight?.label !== "Padrão" && (
-                          <span>{item.selectedWeight?.label} • </span>
-                        )}
-                        {item.selectedFlavor !== "Padrão" && (
-                          <span>{item.selectedFlavor}</span>
-                        )}
+                        {item.selectedWeight?.label !== "Padrão" && <span>{item.selectedWeight?.label} • </span>}
+                        {item.selectedFlavor !== "Padrão" && <span>{item.selectedFlavor}</span>}
                       </div>
 
                       <button
@@ -143,13 +132,13 @@ export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerP
 
             <div className="space-y-4 pt-4">
               <Separator />
-              
+
               {/* Input Nome do Cliente */}
               <div className="space-y-2">
                 <Label htmlFor="name">Seu Nome (para o pedido)</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Ex: Ana Silva" 
+                <Input
+                  id="name"
+                  placeholder="Ex: Ana Silva"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
@@ -161,12 +150,14 @@ export function CartDrawer({ items, isOpen, onClose, onRemoveItem }: CartDrawerP
               </div>
 
               <SheetFooter>
-                <Button 
-                  className="w-full h-12 text-lg bg-green-600 hover:bg-green-700 text-white" 
+                <Button
+                  className="w-full h-12 text-lg bg-green-600 hover:bg-green-700 text-white"
                   onClick={handleCheckout}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Processando..." : (
+                  {isSubmitting ? (
+                    "Processando..."
+                  ) : (
                     <>
                       <Send className="mr-2 h-5 w-5" />
                       Finalizar no WhatsApp

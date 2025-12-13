@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
 import { CategoryFilters } from "@/components/category-filters"
@@ -9,36 +9,19 @@ import { ProductModal } from "@/components/product-modal"
 import { CartDrawer } from "@/components/cart-drawer"
 import { MobileMenu } from "@/components/mobile-menu"
 import type { Product, CartItem } from "@/lib/types"
-import { getProducts } from "@/app/_actions/get-products" // Importa a busca do banco
+import { products as staticProducts } from "@/lib/products"
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("todos")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  
-  // Estado inicial vazio, será preenchido pelo banco
-  const [products, setProducts] = useState<Product[]>([]) 
-  const [isLoading, setIsLoading] = useState(true)
+
+  const [products] = useState<Product[]>(staticProducts)
+  const [isLoading] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
-
-  // Efeito para carregar os dados ao abrir a página
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await getProducts()
-        // @ts-ignore: Tipos temporários enquanto ajustamos o strict mode
-        setProducts(data)
-      } catch (error) {
-        console.error("Falha ao carregar produtos", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadData()
-  }, [])
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product)
@@ -79,15 +62,11 @@ export default function Home() {
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
-               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-               <p className="text-muted-foreground">Carregando delícias...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Carregando delícias...</p>
             </div>
           ) : (
-            <ProductGrid 
-              products={products} 
-              category={selectedCategory} 
-              onProductClick={handleProductClick} 
-            />
+            <ProductGrid products={products} category={selectedCategory} onProductClick={handleProductClick} />
           )}
         </div>
       </section>
