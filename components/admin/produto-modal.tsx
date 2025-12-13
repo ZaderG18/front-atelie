@@ -14,12 +14,10 @@ import { Switch } from "@/components/ui/switch"
 import type { Produto, CategoriaAdmin } from "@/lib/admin-types"
 import { categoriasConfig } from "@/lib/admin-types"
 
-
 interface ProdutoModalProps {
   isOpen: boolean
   onClose: () => void
-  // Alteramos aqui para aceitar o arquivoImagem extra
-  onSave: (produto: Omit<Produto, "id"> & { arquivoImagem?: File | null }) => void
+  onSave: (produto: any) => void // Usamos any aqui para permitir o mapeamento flexível
   produto: Produto | null
 }
 
@@ -32,7 +30,6 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
   const [visivelVitrine, setVisivelVitrine] = useState(true)
   
   const [imagemPreview, setImagemPreview] = useState<string | null>(null)
-  // Novo estado para guardar o arquivo real
   const [arquivoImagem, setArquivoImagem] = useState<File | null>(null) 
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -46,7 +43,7 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
       setSobEncomenda(produto.sobEncomenda)
       setVisivelVitrine(produto.visivelVitrine)
       setImagemPreview(produto.imagem)
-      setArquivoImagem(null) // Reseta o arquivo novo ao abrir edição
+      setArquivoImagem(null)
     } else {
       setNome("")
       setDescricao("")
@@ -62,9 +59,7 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setArquivoImagem(file) // Guarda o arquivo para envio
-      
-      // Cria preview
+      setArquivoImagem(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagemPreview(reader.result as string)
@@ -83,15 +78,22 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // CORREÇÃO: Mapeamos os campos do Form (PT) para a Server Action (EN/Schema)
     onSave({
-      nome,
-      descricao,
-      preco: Number.parseFloat(preco),
-      categoria,
-      imagem: imagemPreview, // Manda a string só pro frontend atualizar rápido
-      arquivoImagem: arquivoImagem, // Manda o arquivo pro backend salvar
-      sobEncomenda,
-      visivelVitrine,
+      id: produto?.id, // Importante passar o ID se for edição!
+      
+      // Campos mapeados para bater com app/_actions/products.ts
+      name: nome, 
+      description: descricao,
+      sale_price: Number.parseFloat(preco), // A action espera 'sale_price'
+      category: categoria,
+      image_url: imagemPreview,             // A action espera 'image_url'
+      is_made_to_order: sobEncomenda,       // A action espera 'is_made_to_order'
+      is_active: visivelVitrine,            // A action espera 'is_active'
+      
+      // Dados extras
+      arquivoImagem: arquivoImagem,
     })
   }
 
@@ -102,7 +104,6 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
           <DialogTitle className="text-slate-900">
              {produto ? "Editar Produto" : "Novo Produto"}
           </DialogTitle>
-          {/* ADICIONE ESTA LINHA 👇 */}
           <DialogDescription>Preencha os detalhes do produto.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
