@@ -9,16 +9,13 @@ import { ProductModal } from "@/components/product-modal"
 import { CartDrawer } from "@/components/cart-drawer"
 import { MobileMenu } from "@/components/mobile-menu"
 import type { Product, CartItem } from "@/lib/types"
-import { API_URL } from "@/lib/api-config"
-
-// Importamos a lista estática para usar APENAS como Backup (Fallback)
-import { products as STATIC_PRODUCTS } from "@/lib/products"
+import { getProducts } from "@/app/_actions/get-products" // Importa a busca do banco
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("todos")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   
-  // Estados para gerenciar os dados da API
+  // Estado inicial vazio, será preenchido pelo banco
   const [products, setProducts] = useState<Product[]>([]) 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -27,58 +24,20 @@ export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
+  // Efeito para carregar os dados ao abrir a página
   useEffect(() => {
-    const fetchProducts = async () => {
+    async function loadData() {
       try {
-        console.log("📡 Tentando conectar com Laravel...")
-        
-        // Tenta buscar no Laravel (usando IP 127.0.0.1 para evitar erro no Windows)
-        const response = await fetch(`${API_URL}/api/products`)
-        
-        if (!response.ok) throw new Error("API não respondeu")
-        
-        const data = await response.json()
-
-        // 1. FILTRAR: Só mostra o que está marcado como "Visível na Vitrine" (is_active = true)
-        const activeProducts = data.filter((item: any) => item.is_active);
-
-        // 2. FORMATAR: Traduz os dados do Banco para o Front
-        const dbProducts = activeProducts.map((item: any) => {
-          
-          // O Admin já salva as categorias com os IDs certos ("brownies", "macarons", etc)
-          // Mas caso tenha algum legado, mantemos o switch básico
-          let categoryFrontend = item.category;
-          
-          if (item.category === "bolos_pote") categoryFrontend = "bolos-no-pote";
-
-          return {
-            id: item.id.toString(),
-            name: item.name,
-            description: item.description || "Delicioso e feito com amor.",
-            // Usa a URL do Laravel ou placeholder
-            image: item.image_url || "/placeholder-cake.jpg", 
-            basePrice: Number.parseFloat(item.sale_price),
-            status: item.is_made_to_order ? "sob-encomenda" : "pronta-entrega",
-            category: categoryFrontend,
-            weights: [{ label: "Padrão", priceModifier: 0 }],
-            flavors: ["Padrão"],
-            additionals: [],
-          }
-        })
-
-        console.log("✅ Conectado! Carregando vitrine atualizada.")
-        setProducts(dbProducts)
-
+        const data = await getProducts()
+        // @ts-ignore: Tipos temporários enquanto ajustamos o strict mode
+        setProducts(data)
       } catch (error) {
-        console.warn("⚠️ Laravel offline. Usando Cardápio de Backup.")
-        // Se der erro, usamos a lista que já existia no projeto
-        setProducts(STATIC_PRODUCTS)
+        console.error("Falha ao carregar produtos", error)
       } finally {
         setIsLoading(false)
       }
     }
-
-    fetchProducts()
+    loadData()
   }, [])
 
   const handleProductClick = (product: Product) => {
@@ -119,9 +78,9 @@ export default function Home() {
           <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
 
           {isLoading ? (
-            <div className="text-center py-20">
-               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-               <p className="text-gray-500">Tirando do forno... 🍰</p>
+            <div className="flex flex-col items-center justify-center py-20">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+               <p className="text-muted-foreground">Carregando delícias...</p>
             </div>
           ) : (
             <ProductGrid 
