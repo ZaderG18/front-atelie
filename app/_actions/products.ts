@@ -13,47 +13,43 @@ const categoryMap: Record<string, string> = {
   "kits_festa": "Kits Festa"
 }
 
+// 1. SALVAR (CRIAR/EDITAR)
 export async function saveProduct(data: any) {
   try {
-    // 1. Resolver a Categoria (String -> ID)
-    // O formulário manda "bolos_festivos", precisamos achar o ID da categoria "Bolos Festivos"
+    // Resolver a Categoria (String -> ID)
     const categoryName = categoryMap[data.category] || data.category
     
     let category = await prisma.category.findFirst({
       where: { name: { equals: categoryName, mode: 'insensitive' } }
     })
 
-    // Se não achar a categoria, cria uma "Geral" ou usa a primeira que tiver para não dar erro
     if (!category) {
         category = await prisma.category.findFirst()
     }
 
-    // 2. Montar o objeto para o Prisma (Snake_case -> CamelCase)
     const payload = {
       name: data.name,
       description: data.description,
-      basePrice: Number(data.sale_price),      // CORREÇÃO: sale_price -> basePrice
-      imageUrl: data.image_url,                // CORREÇÃO: image_url -> imageUrl
-      isMadeToOrder: data.is_made_to_order,    // CORREÇÃO: is_made_to_order -> isMadeToOrder
-      isActive: data.is_active !== false,      // Garante boleano
-      categoryId: category?.id                 // Conecta a categoria pelo ID
+      basePrice: Number(data.sale_price),
+      imageUrl: data.image_url,
+      isMadeToOrder: data.is_made_to_order,
+      isActive: data.is_active !== false,
+      categoryId: category?.id
     }
 
     if (data.id) {
-      // Atualizar
       await prisma.product.update({
         where: { id: Number(data.id) },
         data: payload,
       })
     } else {
-      // Criar
       await prisma.product.create({
         data: payload,
       })
     }
 
     revalidatePath("/admin/produtos")
-    revalidatePath("/") // Atualiza a vitrine também
+    revalidatePath("/")
     return { success: true }
 
   } catch (error) {
@@ -62,6 +58,7 @@ export async function saveProduct(data: any) {
   }
 }
 
+// 2. DELETAR
 export async function deleteProduct(id: number) {
   try {
     await prisma.product.delete({
@@ -73,5 +70,22 @@ export async function deleteProduct(id: number) {
   } catch (error) {
     console.error("Erro ao deletar produto:", error)
     return { success: false, error: "Erro ao deletar produto." }
+  }
+}
+
+// 3. ALTERAR VISIBILIDADE (A função que faltava!)
+export async function toggleProductVisibility(id: number, currentStatus: boolean) {
+  try {
+    await prisma.product.update({
+      where: { id: Number(id) },
+      data: { isActive: !currentStatus }
+    })
+    
+    revalidatePath("/admin/produtos")
+    revalidatePath("/")
+    return { success: true }
+  } catch (error) {
+    console.error("Erro ao alterar visibilidade:", error)
+    return { success: false, error: "Erro ao atualizar status." }
   }
 }
