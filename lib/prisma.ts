@@ -1,18 +1,17 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from "@prisma/client"
 
-// Adiciona o prisma ao escopo global do NodeJS para evitar recriação
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+  return new PrismaClient({
+    datasourceUrl: process.env.DATABASE_URL + "?pgbouncer=true"
+  })
 }
 
 declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
+  var prismaGlobal: ReturnType<typeof prismaClientSingleton> | undefined
 }
 
-// Se já existir uma conexão global, usa ela. Se não, cria uma nova.
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
-// Em desenvolvimento, salva a conexão na variável global para sobreviver ao hot-reload
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   globalThis.prismaGlobal = prisma
 }
