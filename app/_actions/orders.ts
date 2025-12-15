@@ -5,147 +5,90 @@ import { revalidatePath } from "next/cache"
 // Importamos os Enums para garantir que o status/origem sejam válidos
 import { OrderStatus, OrderOrigin, PaymentMethod } from "@prisma/client"
 
-// ==========================================
-// 1. BUSCAR PEDIDOS
-// ==========================================
-export async function getOrders() {
+export async function createOrder(data: {
+  customer_name: string
+  status: string
+  origin: string
+  payment_method: string
+  notes?: string
+  items: {
+    product_id: number
+    product_name: string
+    quantity: number
+    price: number
+  }[]
+}) {
   try {
-    const orders = await prisma.order.findMany({
-      include: {
-        items: true, // Traz os produtos do pedido
-      },
-      orderBy: {
-        createdAt: "desc", // CORRIGIDO: created_at -> createdAt
-      },
-    })
-
-    return orders
-  } catch (error) {
-    console.error("Erro ao buscar pedidos:", error)
-    return []
-  }
-}
-
-// ==========================================
-// 2. ATUALIZAR STATUS
-// ==========================================
-export async function updateOrderStatus(orderId: number, newStatus: string) {
-  try {
-    // Tentamos converter a string recebida para o Enum do Prisma
-    // Ex: "pending" vira "PENDING"
-    const statusEnum = newStatus.toUpperCase() as OrderStatus
-
-    // Verificação de segurança simples
-    if (!Object.values(OrderStatus).includes(statusEnum)) {
-      throw new Error("Status inválido")
+    if (!data.items || data.items.length === 0) {
+      throw new Error("Pedido sem itens")
     }
 
-    const order = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: statusEnum },
-    })
+    const statusMap: Record<string, OrderStatus> = {
+      pending: "PENDING",
+      confirmed: "CONFIRMED",
+      preparing: "PREPARING",
+      ready: "READY",
+      delivered: "DELIVERED",
+      canceled: "CANCELED",
+    }
 
-    revalidatePath("/admin/pedidos")
-    revalidatePath("/admin") 
+    const originMap: Record<string, OrderOrigin> = {
+      whatsapp: "WHATSAPP",
+      instagram: "INSTAGRAM",
+      balcao: "BALCAO",
+      site: "SITE",
+      telefone: "WHATSAPP",
+      ifood: "IFOOD",
+    }
 
-    return { success: true, order }
-  } catch (error) {
-    console.error("Erro ao atualizar status:", error)
-    return { success: false, error: "Erro ao atualizar status" }
-  }
-}
+    const paymentMap: Record<string, PaymentMethod> = {
+      pix: "PIX",
+      card: "CREDIT_CARD",
+      money: "CASH",
+      debit: "DEBIT_CARD",
+    }
 
-// ==========================================
-// 3. DELETAR PEDIDO
-// ==========================================
-export async function deleteOrder(orderId: number) {
-  try {
-    await prisma.order.delete({
-      where: { id: orderId },
+    // 🔒 Cálculo REAL do total no backend
+    const totalAmount = data.items.reduce((acc, item) => {
+      return acc + Number(item.price) * Number(item.quantity)
+    }, 0)
+
+    const order = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          customerName: data.customer_name,
+          notes: data.notes,
+          totalAmount,
+
+          status: statusMap[data.status] ?? "PENDING",
+          origin: originMap[data.origin] ?? "BALCAO",
+          paymentMethod: paymentMap[data.payment_method] ?? "CASH",
+        },
+      })
+
+      await tx.orderItem.createMany({
+        data: data.items.map((item) => ({
+          orderId: createdOrder.id,
+          productId: Number(item.product_id),
+          productName: item.product_name,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.price),
+          totalPrice: Number(item.price) * Number(item.quantity),
+        })),
+      })
+
+      return createdOrder
     })
 
     revalidatePath("/admin/pedidos")
     revalidatePath("/admin")
 
-    return { success: true }
-  } catch (error) {
-    console.error("Erro ao deletar pedido:", error)
-    return { success: false, error: "Erro ao deletar pedido" }
-  }
-}
-
-// ==========================================
-// 4. CRIAR PEDIDO (A Lógica Pesada)
-// ==========================================
-export async function createOrder(data: {
-  customer_name: string
-  total_amount: number
-  status: string
-  origin: string
-  payment_method: string
-  notes: string
-  items: any[]
-}) {
-  try {
-    // Mapas para converter string do Front (minúsculo) para Enum do Banco (Maiúsculo)
-    const statusMap: Record<string, OrderStatus> = {
-      "pending": "PENDING",
-      "confirmed": "CONFIRMED",
-      "preparing": "PREPARING",
-      "ready": "READY",
-      "delivered": "DELIVERED",
-      "canceled": "CANCELED"
-    }
-
-    const originMap: Record<string, OrderOrigin> = {
-      "whatsapp": "WHATSAPP",
-      "instagram": "INSTAGRAM",
-      "balcao": "BALCAO",
-      "site": "SITE",
-      "telefone": "WHATSAPP", 
-      "ifood": "IFOOD"
-    }
-
-    const paymentMap: Record<string, PaymentMethod> = {
-      "pix": "PIX",
-      "card": "CREDIT_CARD",
-      "money": "CASH",
-      "debit": "DEBIT_CARD"
-    }
-
-    // Criamos o pedido no banco
-    const order = await prisma.order.create({
-      data: {
-        // Campos simples (camelCase)
-        customerName: data.customer_name,
-        totalAmount: data.total_amount,
-        notes: data.notes,
-
-        // Campos Enum (usamos os mapas ou fallback)
-        status: statusMap[data.status] || "PENDING",
-        origin: originMap[data.origin] || "BALCAO",
-        paymentMethod: paymentMap[data.payment_method] || "CASH",
-
-        // Campos Relacionais (Itens)
-        items: {
-          create: data.items.map((item) => ({
-            productId: Number(item.product_id), // Converte string ID para numero
-            productName: item.product_name,     // Snapshot do nome
-            quantity: Number(item.quantity),
-            unitPrice: Number(item.price),      // Preço unitário
-            totalPrice: Number(item.price) * Number(item.quantity) // Total da linha (obrigatório agora)
-          })),
-        },
-      },
-    })
-
-    // Atualiza caches para a tela atualizar sozinha
-    revalidatePath("/admin/pedidos")
-    revalidatePath("/admin") 
-    
     return { success: true, orderId: order.id }
   } catch (error) {
     console.error("Erro ao criar pedido:", error)
-    return { success: false, error: "Falha ao salvar no banco de dados. Verifique os logs." }
+    return {
+      success: false,
+      error: "Erro ao processar o pedido",
+    }
   }
 }

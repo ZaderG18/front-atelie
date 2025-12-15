@@ -260,3 +260,6 @@ enum TransactionType {
   ENTRADA
   SAIDA
 }
+@@index([productId])
+@@index([orderId])
+@@index([customerId])
