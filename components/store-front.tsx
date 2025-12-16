@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
 import { CategoryFilters } from "@/components/category-filters"
@@ -11,43 +11,86 @@ import { MobileMenu } from "@/components/mobile-menu"
 import type { Product, CartItem } from "@/lib/types"
 
 interface StoreFrontProps {
-  initialProducts: Product[] // Recebe os produtos do banco
+  initialProducts: Product[]
 }
 
 export function StoreFront({ initialProducts }: StoreFrontProps) {
-  // Estado
   const [selectedCategory, setSelectedCategory] = useState("todos")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  
-  // Carrinho e Modais
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
-  const handleProductClick = (product: Product) => {
+  // ============================
+  // Produto → Modal
+  // ============================
+  const handleProductClick = useCallback((product: Product) => {
     setSelectedProduct(product)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const handleAddToCart = (item: CartItem) => {
-    setCartItems((prev) => [...prev, item])
+  // ============================
+  // Adicionar ao Carrinho
+  // ============================
+  const handleAddToCart = useCallback((item: CartItem) => {
+    setCartItems((prev) => {
+      // 🔍 Verifica se já existe item IGUAL (produto + opções)
+      const existingIndex = prev.findIndex(
+        (i) =>
+          i.id === item.id &&
+          i.selectedWeight?.label === item.selectedWeight?.label &&
+          i.selectedFlavor === item.selectedFlavor &&
+          JSON.stringify(i.additionals) === JSON.stringify(item.additionals) &&
+          i.observation === item.observation,
+      )
+
+      if (existingIndex >= 0) {
+        // 🧮 Soma a quantidade
+        const updated = [...prev]
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + item.quantity,
+        }
+        return updated
+      }
+
+      return [...prev, item]
+    })
+
     setIsModalOpen(false)
     setIsCartOpen(true)
-  }
+  }, [])
 
-  const handleRemoveFromCart = (index: number) => {
+  // ============================
+  // Remover item
+  // ============================
+  const handleRemoveFromCart = useCallback((index: number) => {
     setCartItems((prev) => prev.filter((_, i) => i !== index))
-  }
+  }, [])
 
+  // ============================
+  // Limpar carrinho (pós-checkout)
+  // ============================
+  const clearCart = useCallback(() => {
+    setCartItems([])
+  }, [])
+
+  // ============================
+  // Scroll suave para o cardápio
+  // ============================
   const scrollToMenu = () => {
-    document.getElementById("cardapio")?.scrollIntoView({ behavior: "smooth" })
+    document
+      .getElementById("cardapio")
+      ?.scrollIntoView({ behavior: "smooth" })
   }
 
   return (
     <main className="min-h-screen bg-background">
       <Header
-        cartItemsCount={cartItems.length}
+        cartItemsCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
         onCartClick={() => setIsCartOpen(true)}
         onMenuClick={() => setIsMobileMenuOpen(true)}
       />
@@ -60,17 +103,20 @@ export function StoreFront({ initialProducts }: StoreFrontProps) {
             Nosso Cardápio
           </h2>
 
-          <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
+          <CategoryFilters
+            selected={selectedCategory}
+            onSelect={setSelectedCategory}
+          />
 
           {initialProducts.length === 0 ? (
-             <div className="text-center py-20 text-muted-foreground">
-                <p>Nenhum produto disponível no momento.</p>
-             </div>
+            <div className="py-20 text-center text-muted-foreground">
+              <p>Nenhum produto disponível no momento.</p>
+            </div>
           ) : (
-            <ProductGrid 
-                products={initialProducts} // Usa os produtos que vieram do banco
-                category={selectedCategory} 
-                onProductClick={handleProductClick} 
+            <ProductGrid
+              products={initialProducts}
+              category={selectedCategory}
+              onProductClick={handleProductClick}
             />
           )}
         </div>
@@ -88,9 +134,13 @@ export function StoreFront({ initialProducts }: StoreFrontProps) {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         onRemoveItem={handleRemoveFromCart}
+        clearCart={clearCart}
       />
 
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
     </main>
   )
 }
