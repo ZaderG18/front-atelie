@@ -3,39 +3,36 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { PedidosTable } from "@/components/admin/pedidos-table"
 import { getOrders, updateOrderStatus } from "@/app/_actions/orders"
 import { redirect } from "next/navigation"
-
-// 1. Importamos o OrderStatus para comparar corretamente
-import { Order, OrderStatus } from "@prisma/client" 
+import { OrderStatus } from "@prisma/client"
 
 export const dynamic = 'force-dynamic'
 
 export default async function PedidosPage() {
-  // 1. Busca os dados brutos
+  // 1. Busca os dados
   const pedidos = await getOrders()
 
-  // 2. CORREÇÃO: Usamos o Enum (OrderStatus.PENDING) ou a string Maiúscula ("PENDING")
-  const pendingCount = pedidos.filter((p) => p.status === OrderStatus.PENDING).length
-  const confirmedCount = pedidos.filter((p) => p.status === OrderStatus.CONFIRMED).length
-  const deliveredCount = pedidos.filter((p) => p.status === OrderStatus.DELIVERED).length
+  // 2. OTIMIZAÇÃO: Calcula todas as contagens em uma única passada (loop)
+  const stats = pedidos.reduce((acc, curr) => {
+    if (curr.status === OrderStatus.PENDING) acc.pending++
+    if (curr.status === OrderStatus.CONFIRMED) acc.confirmed++
+    if (curr.status === OrderStatus.DELIVERED) acc.delivered++
+    return acc
+  }, { pending: 0, confirmed: 0, delivered: 0 })
 
-  // 3. Formatação (ADAPTER: Banco Novo -> Frontend Antigo)
-  // O banco agora retorna camelCase (totalAmount), mas sua tabela espera snake_case (total_amount)
+  // 3. Formatação
   const formattedOrders = pedidos.map((order) => ({
     id: order.id,
-    
-    // Mapeando campos novos para nomes antigos para a tabela não quebrar
     customer_name: order.customerName, 
-    total_amount: Number(order.totalAmount).toFixed(2), // Garante string formatada
+    // Se getOrders já devolve number, só formata a string
+    total_amount: Number(order.totalAmount).toFixed(2), 
     status: order.status,
     origin: order.origin,
-    created_at: order.createdAt.toISOString(),
-    
+    created_at: new Date(order.createdAt).toISOString(), // Garante que é Date antes de toISOString
     items: order.items.map((item) => ({
-      // Ajuste os nomes aqui também se necessário
       id: item.id,
       product_name: item.productName,
       quantity: item.quantity,
-      price: Number(item.unitPrice), // O novo banco chama de unitPrice
+      price: Number(item.unitPrice),
     })),
   }))
 
@@ -57,31 +54,30 @@ export default async function PedidosPage() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Cards de contagem */}
+            {/* Cards de contagem usando a variável 'stats' otimizada */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Pendentes</span>
-                  <span className="text-2xl font-bold text-yellow-600">{pendingCount}</span>
+                  <span className="text-2xl font-bold text-yellow-600">{stats.pending}</span>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Confirmados</span>
-                  <span className="text-2xl font-bold text-blue-600">{confirmedCount}</span>
+                  <span className="text-2xl font-bold text-blue-600">{stats.confirmed}</span>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Entregues</span>
-                  <span className="text-2xl font-bold text-green-600">{deliveredCount}</span>
+                  <span className="text-2xl font-bold text-green-600">{stats.delivered}</span>
                 </div>
               </div>
             </div>
 
-            {/* Tabela recebendo os dados formatados */}
             <PedidosTable 
                 pedidos={formattedOrders} 
                 onStatusChange={updateOrderStatus}

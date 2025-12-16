@@ -146,12 +146,14 @@ export function NovoPedidoForm({ products }: NovoPedidoFormProps) {
     setIsSubmitting(true)
 
     try {
+      // CORREÇÃO: Adicionamos o total_amount aqui!
       const result = await createOrder({
         customer_name: cliente,
         status: "confirmed",
         origin: origem,
         payment_method: pagamento,
         notes: obs,
+        total_amount: totalPedido, // <--- O CAMPO QUE FALTAVA
         items: itens.map((item) => ({
           product_id: item.product_id,
           product_name: item.product_name,
@@ -167,9 +169,9 @@ export function NovoPedidoForm({ products }: NovoPedidoFormProps) {
       toast.success("Pedido criado com sucesso!")
       router.push("/admin/pedidos")
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      toast.error("Erro ao salvar o pedido.")
+      toast.error("Erro ao salvar o pedido: " + error.message)
     } finally {
       setIsSubmitting(false)
     }
