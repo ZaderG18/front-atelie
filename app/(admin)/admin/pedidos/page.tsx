@@ -2,16 +2,18 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { PedidosTable } from "@/components/admin/pedidos-table"
 import { getOrders, updateOrderStatus } from "@/app/_actions/orders"
+import { getStoreSettings } from "@/app/_actions/settings"
 import { redirect } from "next/navigation"
 import { OrderStatus } from "@prisma/client"
 
 export const dynamic = 'force-dynamic'
 
 export default async function PedidosPage() {
-  // 1. Busca os dados
-  const pedidos = await getOrders()
+  const [pedidos, settings] = await Promise.all([
+    getOrders(),
+    getStoreSettings()
+  ])
 
-  // 2. OTIMIZAÇÃO: Calcula todas as contagens em uma única passada (loop)
   const stats = pedidos.reduce((acc, curr) => {
     if (curr.status === OrderStatus.PENDING) acc.pending++
     if (curr.status === OrderStatus.CONFIRMED) acc.confirmed++
@@ -19,20 +21,31 @@ export default async function PedidosPage() {
     return acc
   }, { pending: 0, confirmed: 0, delivered: 0 })
 
-  // 3. Formatação
+  // --- CORREÇÃO AQUI ---
   const formattedOrders = pedidos.map((order) => ({
+    ...order, 
+    
+    // 1. CONVERSÃO OBRIGATÓRIA DE DECIMAIS DO PRISMA
+    // O erro estava aqui: deliveryFee vinha como Decimal
+    deliveryFee: Number(order.deliveryFee || 0),
+    totalAmount: Number(order.totalAmount), // Convertemos o original também para garantir
+    
+    // 2. Campos formatados para a Tabela (snake_case)
     id: order.id,
     customer_name: order.customerName, 
-    // Se getOrders já devolve number, só formata a string
-    total_amount: Number(order.totalAmount).toFixed(2), 
+    total_amount: Number(order.totalAmount),
     status: order.status,
     origin: order.origin,
-    created_at: new Date(order.createdAt).toISOString(), // Garante que é Date antes de toISOString
+    created_at: new Date(order.createdAt).toISOString(),
+    
     items: order.items.map((item) => ({
-      id: item.id,
+      ...item,
       product_name: item.productName,
       quantity: item.quantity,
       price: Number(item.unitPrice),
+      // Garantimos números nos itens também
+      unitPrice: Number(item.unitPrice),
+      totalPrice: Number(item.totalPrice)
     })),
   }))
 
@@ -54,7 +67,6 @@ export default async function PedidosPage() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Cards de contagem usando a variável 'stats' otimizada */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border dark:border-slate-800">
                 <div className="flex items-center justify-between">
@@ -81,6 +93,7 @@ export default async function PedidosPage() {
             <PedidosTable 
                 pedidos={formattedOrders} 
                 onStatusChange={updateOrderStatus}
+                settings={settings} 
             />
           </div>
         </main>

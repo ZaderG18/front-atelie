@@ -18,7 +18,8 @@ export async function getStoreSettings() {
     if (!settings) {
       settings = await prisma.storeSettings.create({
         data: {
-          nomeConfeitaria: "Minha Confeitaria",
+          nomeConfeitaria: "Ateliê Aflorar Doces", // Já acertei o nome aqui
+          logoUrl: "/logo.png",
           // Cria com dados padrão para não quebrar a UI
           bairros: {
             create: [
