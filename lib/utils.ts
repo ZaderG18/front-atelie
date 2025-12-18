@@ -23,14 +23,11 @@ const brlFormatter = new Intl.NumberFormat("pt-BR", {
  * Aceita number ou string
  * Protegido contra NaN, undefined, null
  */
-export function formatCurrency(value: number | string | null | undefined) {
-  const amount = Number(value)
-
-  if (isNaN(amount)) {
-    return brlFormatter.format(0)
-  }
-
-  return brlFormatter.format(amount)
+export function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value)
 }
 
 /**

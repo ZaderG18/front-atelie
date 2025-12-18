@@ -19,6 +19,13 @@ const config = {
     extend: {
       colors: {
         border: "hsl(var(--border))",
+        gold: {
+          DEFAULT: "#D4AF37", // Dourado clássico
+          dark: "#B5952F",
+        },
+        cream: "#FDFBF7", // Um off-white quente
+        charcoal: "#333333",
+        "warm-gray": "#78716C",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",

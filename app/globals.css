@@ -5,8 +5,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Custom color scheme for Ateliê Aflorar Doces with Rosa Aflorar as primary */
+/* Custom color scheme for Ateliê Aflorar Doces */
 :root {
+  /* --- Cores Base do Shadcn --- */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
@@ -39,17 +40,32 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
 
-  /* Custom tokens for the bakery */
+  /* --- Cores Atuais (Seu código) --- */
   --rosa-aflorar: oklch(0.65 0.12 10);
   --rosa-light: oklch(0.92 0.04 10);
   --cinza-chumbo: oklch(0.3 0.02 250);
   --verde-pronta: oklch(0.55 0.15 145);
   --roxo-encomenda: oklch(0.5 0.12 280);
+
+  /* --- NOVAS CORES (Vindas do v0 para o Login) --- */
+  --cream: oklch(0.98 0.01 75);
+  --rose-50: oklch(0.97 0.015 15);
+  --rose-100: oklch(0.93 0.03 15);
+  --rose-300: oklch(0.8 0.08 15);
+  --rose-400: oklch(0.7 0.12 15);
+  --rose-500: oklch(0.6 0.15 15);
+  --rose-950: oklch(0.2 0.05 15);
+  --charcoal: oklch(0.3 0.01 270);
+  --warm-gray: oklch(0.55 0.01 45);
+  --gold: oklch(0.65 0.12 75);
+  --gold-dark: oklch(0.55 0.13 70);
+  --amber-950: oklch(0.25 0.05 65);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
 }
 
-/* Updated dark theme with Rosa Aflorar identity */
+/* Dark theme */
 .dark {
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
@@ -84,7 +100,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
 
-  /* Custom tokens for the bakery - dark mode */
+  /* Tokens do Dark Mode */
   --rosa-aflorar: oklch(0.72 0.12 10);
   --rosa-light: oklch(0.3 0.06 10);
   --cinza-chumbo: oklch(0.85 0.01 250);
@@ -95,6 +111,7 @@
 @theme inline {
   --font-sans: "Playfair Display", "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -132,12 +149,27 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Custom bakery colors */
+  /* --- Registro das Cores Personalizadas --- */
   --color-rosa-aflorar: var(--rosa-aflorar);
   --color-rosa-light: var(--rosa-light);
   --color-cinza-chumbo: var(--cinza-chumbo);
   --color-verde-pronta: var(--verde-pronta);
   --color-roxo-encomenda: var(--roxo-encomenda);
+  
+  /* --- Cores Novas (Login) --- */
+  --color-cream: var(--cream);
+  --color-rose-50: var(--rose-50);
+  --color-rose-100: var(--rose-100);
+  --color-rose-300: var(--rose-300);
+  --color-rose-400: var(--rose-400);
+  --color-rose-500: var(--rose-500);
+  --color-rose-950: var(--rose-950);
+  --color-charcoal: var(--charcoal);
+  --color-warm-gray: var(--warm-gray);
+  --color-gold: var(--gold);
+  --color-gold-dark: var(--gold-dark);
+  --color-amber-950: var(--amber-950);
+
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
