@@ -17,14 +17,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface MobileSidebarProps {
-  activeItem?: string // Opcional, para destacar
+  activeItem?: string 
 }
 
 export function MobileSidebar({ activeItem }: MobileSidebarProps) {
   const [open, setOpen] = useState(false)
+  
+  // --- 1. Adicionar estado de montagem ---
+  const [isMounted, setIsMounted] = useState(false)
+
+  // --- 2. Adicionar efeito para marcar como montado ---
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/admin", badge: null },
@@ -34,6 +42,11 @@ export function MobileSidebar({ activeItem }: MobileSidebarProps) {
     { id: "financeiro", label: "Financeiro", icon: DollarSign, href: "/admin/financeiro", badge: null },
     { id: "configuracoes", label: "Configurações", icon: Settings, href: "/admin/configuracoes", badge: null },
   ]
+
+  // --- 3. Impedir renderização no servidor (Onde ocorre o erro de ID) ---
+  if (!isMounted) {
+    return null
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

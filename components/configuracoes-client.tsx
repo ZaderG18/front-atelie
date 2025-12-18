@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { updateStoreSettings } from "@/app/_actions/settings"
+import { createUser, deleteUser } from "@/app/_actions/users" // <--- NOVAS ACTIONS
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,11 +14,14 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog" // <--- NOVO
+import { Badge } from "@/components/ui/badge" // <--- NOVO
 import { toast } from "sonner"
 import { NumericFormat } from "react-number-format"
 import {
-  Store, Clock, CreditCard, Truck, Upload, Phone, MessageCircle,
-  Save, Plus, Trash2, ChefHat, QrCode, Banknote, Wallet, MapPin, ImageIcon
+  Store, Clock, CreditCard, Truck, Upload, 
+  Save, Plus, Trash2, QrCode, Banknote, Wallet, MapPin, ImageIcon,
+  Users, Shield, User as UserIcon // <--- NOVOS ÍCONES
 } from "lucide-react"
 
 // Dias fixos para o loop
@@ -31,8 +35,14 @@ const DIAS_SEMANA = [
   { id: "sab", label: "S", nome: "Sábado" },
 ]
 
-export default function ConfiguracoesClient({ initialData }: { initialData: any }) {
-  // Mapeia os dados do banco para o formato do estado local
+// Atualizei a interface para receber os users
+export default function ConfiguracoesClient({ initialData, users = [] }: { initialData: any, users?: any[] }) {
+  
+  // --- ESTADOS DA EQUIPE ---
+  const [isPending, startTransition] = useTransition()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // --- ESTADOS DAS CONFIGURAÇÕES ---
   const [config, setConfig] = useState({
     geral: {
       logo: initialData?.logoUrl || "",
@@ -69,6 +79,35 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
   const [activeTab, setActiveTab] = useState("geral")
   const [novoBairro, setNovoBairro] = useState({ nome: "", taxa: "" })
   const [salvando, setSalvando] = useState(false)
+
+  // --- FUNÇÕES DA EQUIPE ---
+
+  async function handleCreateUser(formData: FormData) {
+    startTransition(async () => {
+      const result = await createUser(formData)
+      if (!result.success) {
+        toast.error(result.error)
+      } else {
+        toast.success(result.message)
+        setIsModalOpen(false)
+      }
+    })
+  }
+
+  async function handleDeleteUser(id: number) {
+    if (!confirm("Tem certeza que deseja remover este usuário?")) return
+    
+    startTransition(async () => {
+      const result = await deleteUser(id)
+      if (!result.success) {
+        toast.error(result.error)
+      } else {
+        toast.success(result.message)
+      }
+    })
+  }
+
+  // --- FUNÇÕES DE CONFIGURAÇÃO ---
 
   const handleSalvar = async () => {
     setSalvando(true)
@@ -109,7 +148,6 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
           ...prev.entregas,
           bairros: [
             ...prev.entregas.bairros,
-            // ID temporário negativo para não conflitar com o banco, o back vai recriar
             { id: -Date.now(), nome: novoBairro.nome, taxa: Number.parseFloat(novoBairro.taxa.replace(',', '.')) },
           ],
         },
@@ -138,11 +176,12 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+              <TabsList className="grid w-full grid-cols-5 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
                 <TabsTrigger value="geral" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg"><Store className="w-4 h-4" /><span className="hidden sm:inline">Geral</span></TabsTrigger>
                 <TabsTrigger value="cardapio" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg"><Clock className="w-4 h-4" /><span className="hidden sm:inline">Cardápio</span></TabsTrigger>
                 <TabsTrigger value="pagamentos" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg"><CreditCard className="w-4 h-4" /><span className="hidden sm:inline">Pagamentos</span></TabsTrigger>
                 <TabsTrigger value="entregas" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg"><Truck className="w-4 h-4" /><span className="hidden sm:inline">Entregas</span></TabsTrigger>
+                <TabsTrigger value="equipe" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg"><Users className="w-4 h-4" /><span className="hidden sm:inline">Equipe</span></TabsTrigger>
               </TabsList>
 
               {/* === TAB GERAL === */}
@@ -178,7 +217,6 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {/* Usando NumericFormat para telefones também pode ser útil, mas Input simples serve por enquanto */}
                       <div className="space-y-2">
                         <Label>Telefone</Label>
                         <Input value={config.geral.telefone} onChange={(e) => setConfig((prev) => ({ ...prev, geral: { ...prev.geral, telefone: e.target.value } }))} />
@@ -270,7 +308,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
                         </div>
                       )}
                     </div>
-                    {/* Cartão e Dinheiro (Simplificados visualmente) */}
+                    
                     <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                         <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center"><CreditCard className="w-5 h-5 text-blue-600" /></div><p className="font-medium">Cartão (Maquininha)</p></div>
                         <Switch checked={config.pagamentos.cartao} onCheckedChange={(c) => setConfig(prev => ({...prev, pagamentos: {...prev.pagamentos, cartao: c}}))} />
@@ -345,6 +383,110 @@ export default function ConfiguracoesClient({ initialData }: { initialData: any 
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* === TAB EQUIPE (NOVA) === */}
+              <TabsContent value="equipe" className="space-y-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-lg font-semibold flex items-center gap-2"><Users className="w-5 h-5 text-rose-500" /> Gerenciamento de Equipe</CardTitle>
+                            <CardDescription>Quem tem acesso ao painel administrativo</CardDescription>
+                        </div>
+                        
+                        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="bg-rose-600 hover:bg-rose-700">
+                                    <Plus className="w-4 h-4 mr-2" /> Novo Usuário
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Adicionar Membro da Equipe</DialogTitle>
+                                </DialogHeader>
+                                <form action={handleCreateUser} className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Nome Completo</Label>
+                                        <Input name="name" required placeholder="Ex: Maria Silva" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>E-mail de Acesso</Label>
+                                        <Input name="email" type="email" required placeholder="maria@atelie.com" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Senha Inicial</Label>
+                                        <Input name="password" type="password" required minLength={6} placeholder="******" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Nível de Acesso</Label>
+                                        <Select name="role" defaultValue="EMPLOYEE">
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ADMIN">Administrador (Acesso Total)</SelectItem>
+                                                <SelectItem value="EMPLOYEE">Funcionário (Acesso Restrito)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-slate-500">
+                                            Funcionários não podem ver Configurações e Financeiro.
+                                        </p>
+                                    </div>
+                                    <Button type="submit" className="w-full" disabled={isPending}>
+                                        {isPending ? "Criando..." : "Cadastrar Usuário"}
+                                    </Button>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-xl border overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nome</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Cargo</TableHead>
+                                        <TableHead className="text-right">Ações</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {users.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-slate-500 py-8">
+                                                Nenhum usuário extra cadastrado.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        users.map((user) => (
+                                            <TableRow key={user.id}>
+                                                <TableCell className="font-medium">{user.name}</TableCell>
+                                                <TableCell className="text-slate-500">{user.email}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'} 
+                                                           className={user.role === 'ADMIN' ? 'bg-rose-100 text-rose-700 hover:bg-rose-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-100'}>
+                                                        {user.role === 'ADMIN' ? <Shield className="w-3 h-3 mr-1"/> : <UserIcon className="w-3 h-3 mr-1"/>}
+                                                        {user.role === 'ADMIN' ? 'Admin' : 'Equipe'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                        onClick={() => handleDeleteUser(user.id)}
+                                                        disabled={isPending}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+              </TabsContent>
+
             </Tabs>
 
             <div className="flex justify-end pt-6">
