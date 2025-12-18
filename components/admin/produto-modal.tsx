@@ -28,7 +28,7 @@ interface Produto {
   name: string
   description: string
   price: number
-  category: string // Aqui vem o Nome (ex: "Bolos Festivos") do banco
+  category: string
   image: string
   is_made_to_order: boolean
   isActive?: boolean
@@ -57,8 +57,8 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
 
   useEffect(() => {
     if (produto) {
-      // Quando edita, o banco retorna o Nome da Categoria (ex: "Bolos Festivos").
-      // Precisamos converter de volta para a chave (ex: "bolos_festivos") para o Select funcionar.
+      // CORREÇÃO: Mapeia a Categoria (Nome -> Slug) ao abrir para edição
+      // Se o banco retornar "Bolos Festivos", achamos a chave "bolos_festivos"
       const categoriaChave = Object.keys(categoriasConfig).find(
         key => categoriasConfig[key as keyof typeof categoriasConfig] === produto.category
       ) || "bolos_festivos"
@@ -107,9 +107,10 @@ export function ProdutoModal({ isOpen, onClose, onSave, produto }: ProdutoModalP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // CORREÇÃO AQUI: Mapeando para os nomes que o 'products.ts' espera
+    // CORREÇÃO CRUCIAL AQUI:
+    // Mapeamos os nomes do formulário (português) para os nomes que a Action espera (inglês/banco)
     onSave({
-      id: produto?.id, // Importante para Edição!
+      id: produto?.id, // Importante mandar o ID na edição!
       name: nome, 
       description: descricao,
       sale_price: Number.parseFloat(preco), // Action espera 'sale_price'
