@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react" // <--- 1. Importar useEffect
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { updateStoreSettings } from "@/app/_actions/settings"
-import { createUser, deleteUser } from "@/app/_actions/users" // <--- NOVAS ACTIONS
+import { createUser, deleteUser } from "@/app/_actions/users"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,17 +14,16 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog" // <--- NOVO
-import { Badge } from "@/components/ui/badge" // <--- NOVO
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { NumericFormat } from "react-number-format"
 import {
   Store, Clock, CreditCard, Truck, Upload, 
   Save, Plus, Trash2, QrCode, Banknote, Wallet, MapPin, ImageIcon,
-  Users, Shield, User as UserIcon // <--- NOVOS ÍCONES
+  Users, Shield, User as UserIcon
 } from "lucide-react"
 
-// Dias fixos para o loop
 const DIAS_SEMANA = [
   { id: "dom", label: "D", nome: "Domingo" },
   { id: "seg", label: "S", nome: "Segunda" },
@@ -35,14 +34,18 @@ const DIAS_SEMANA = [
   { id: "sab", label: "S", nome: "Sábado" },
 ]
 
-// Atualizei a interface para receber os users
 export default function ConfiguracoesClient({ initialData, users = [] }: { initialData: any, users?: any[] }) {
   
-  // --- ESTADOS DA EQUIPE ---
+  // --- 2. ADICIONAR ESTADO DE MONTAGEM ---
+  const [isMounted, setIsMounted] = useState(false)
+  
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const [isPending, startTransition] = useTransition()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // --- ESTADOS DAS CONFIGURAÇÕES ---
   const [config, setConfig] = useState({
     geral: {
       logo: initialData?.logoUrl || "",
@@ -80,8 +83,6 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
   const [novoBairro, setNovoBairro] = useState({ nome: "", taxa: "" })
   const [salvando, setSalvando] = useState(false)
 
-  // --- FUNÇÕES DA EQUIPE ---
-
   async function handleCreateUser(formData: FormData) {
     startTransition(async () => {
       const result = await createUser(formData)
@@ -96,7 +97,6 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
 
   async function handleDeleteUser(id: number) {
     if (!confirm("Tem certeza que deseja remover este usuário?")) return
-    
     startTransition(async () => {
       const result = await deleteUser(id)
       if (!result.success) {
@@ -106,8 +106,6 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
       }
     })
   }
-
-  // --- FUNÇÕES DE CONFIGURAÇÃO ---
 
   const handleSalvar = async () => {
     setSalvando(true)
@@ -164,6 +162,11 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
         bairros: prev.entregas.bairros.filter((b: any) => b.id !== id),
       },
     }))
+  }
+
+  // --- 3. SE NÃO ESTIVER MONTADO, NÃO RENDERIZA NADA (Evita erro nos TABS) ---
+  if (!isMounted) {
+    return null
   }
 
   return (

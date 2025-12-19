@@ -1,9 +1,10 @@
 "use client"
 
-import { Plus, Search, Bell, LogOut, User, Settings } from "lucide-react" // Menu removido
+import { Plus, Search, Bell, LogOut, User, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useState, useEffect } from "react" // <--- 1. Importar useEffect e useState
 
 import {
   DropdownMenu,
@@ -14,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MobileSidebar } from "./mobile-sidebar" // <--- IMPORT NOVO
+import { MobileSidebar } from "./mobile-sidebar"
 
 interface AdminHeaderProps {
   title: string
@@ -35,24 +36,43 @@ export function AdminHeader({
   onSearchChange
 }: AdminHeaderProps) {
   
+  // --- 2. ADICIONAR ESTADO DE MONTAGEM ---
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // --- 3. SE NÃO ESTIVER MONTADO, RENDERIZA VERSÃO SIMPLIFICADA ---
+  // Isso evita que o servidor renderize IDs que vão conflitar depois
+  if (!isMounted) {
+    return (
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-6 py-4 sticky top-0 z-40">
+        <div className="flex items-center justify-between gap-4">
+           {/* Versão estática apenas com os textos para não "piscar" a tela */}
+           <div className="flex items-center gap-4">
+             <div>
+               <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
+               {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 hidden sm:block">{subtitle}</p>}
+             </div>
+           </div>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-6 py-4 sticky top-0 z-40">
       <div className="flex items-center justify-between gap-4">
         
-        {/* Lado Esquerdo: Menu Mobile + Títulos */}
         <div className="flex items-center gap-4">
-          
-          {/* AQUI ESTÁ A MÁGICA: O componente que abre a gaveta */}
           <MobileSidebar />
-
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
             {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 hidden sm:block">{subtitle}</p>}
           </div>
         </div>
 
-        {/* ... (Resto do código igual: Busca, Ações, User, etc) ... */}
-        {/* Centro: Barra de Busca (Funcional) */}
         <div className="hidden lg:flex flex-1 max-w-md mx-4">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -66,9 +86,7 @@ export function AdminHeader({
           </div>
         </div>
 
-        {/* Lado Direito: Ações e Perfil */}
         <div className="flex items-center gap-2">
-          
           {actionLabel && onAction && (
             <Button
               onClick={onAction}

@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useSession, signOut } from "next-auth/react" // <--- Importações necessárias
 import {
   LayoutDashboard,
   Package,
@@ -17,19 +19,68 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface AdminSidebarProps {
-  activeItem: "dashboard" | "insumos" | "produtos" | "pedidos" | "financeiro" | "configuracoes"
+  activeItem?: string
 }
 
 export function AdminSidebar({ activeItem }: AdminSidebarProps) {
-  
+  const pathname = usePathname()
+  const { data: session } = useSession() // <--- Obtém os dados da sessão
+
+  // Definição do Menu
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/admin", badge: null },
-    { id: "pedidos", label: "Pedidos", icon: ShoppingCart, href: "/admin/pedidos", badge: "3" }, // Idealmente isso viria do banco
-    { id: "produtos", label: "Cardápio", icon: ChefHat, href: "/admin/produtos", badge: null },
-    { id: "insumos", label: "Estoque", icon: Package, href: "/admin/insumos", badge: "2" },
-    { id: "financeiro", label: "Financeiro", icon: DollarSign, href: "/admin/financeiro", badge: null },
-    { id: "configuracoes", label: "Configurações", icon: Settings, href: "/admin/configuracoes", badge: null },
+    { 
+      id: "dashboard", 
+      label: "Dashboard", 
+      icon: LayoutDashboard, 
+      href: "/admin", 
+      badge: null // Removido mock
+    },
+    { 
+      id: "pedidos", 
+      label: "Pedidos", 
+      icon: ShoppingCart, 
+      href: "/admin/pedidos", 
+      badge: null // Removido mock "3" -> Vamos implementar contador real depois
+    },
+    { 
+      id: "produtos", 
+      label: "Cardápio", 
+      icon: ChefHat, 
+      href: "/admin/produtos", 
+      badge: null 
+    },
+    { 
+      id: "insumos", 
+      label: "Estoque", 
+      icon: Package, 
+      href: "/admin/insumos", 
+      badge: null // Removido mock "2"
+    },
+    { 
+      id: "financeiro", 
+      label: "Financeiro", 
+      icon: DollarSign, 
+      href: "/admin/financeiro", 
+      badge: null 
+    },
+    { 
+      id: "configuracoes", 
+      label: "Configurações", 
+      icon: Settings, 
+      href: "/admin/configuracoes", 
+      badge: null 
+    },
   ]
+
+  // Filtra itens baseados no cargo (Opcional: Segurança Visual)
+  // Se quiser esconder Financeiro/Config de funcionários, descomente abaixo:
+  /*
+  const filteredItems = menuItems.filter(item => {
+    if (session?.user?.role === "ADMIN") return true
+    return !["financeiro", "configuracoes"].includes(item.id)
+  })
+  */
+  const filteredItems = menuItems // Usando todos por enquanto
 
   return (
     <aside className="w-72 bg-slate-950 text-slate-300 flex flex-col h-screen border-r border-slate-800 hidden md:flex">
@@ -50,8 +101,9 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
         <p className="px-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menu Principal</p>
 
-        {menuItems.slice(0, 4).map((item) => {
-          const isActive = activeItem === item.id
+        {filteredItems.slice(0, 4).map((item) => {
+          // Lógica de "ativo" melhorada para pegar sub-rotas
+          const isActive = activeItem === item.id || pathname.startsWith(item.href) && item.href !== "/admin" || (item.href === "/admin" && pathname === "/admin")
           const Icon = item.icon
 
           return (
@@ -90,8 +142,8 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
 
         <div className="pt-6">
           <p className="px-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sistema</p>
-          {menuItems.slice(4).map((item) => {
-            const isActive = activeItem === item.id
+          {filteredItems.slice(4).map((item) => {
+            const isActive = activeItem === item.id || pathname.startsWith(item.href)
             const Icon = item.icon
 
             return (
@@ -134,15 +186,26 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
         <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
           <Avatar className="h-9 w-9 border border-slate-600">
             <AvatarImage src="/avatar-placeholder.png" />
-            <AvatarFallback className="bg-rose-600 text-white font-bold text-xs">AD</AvatarFallback>
+            <AvatarFallback className="bg-rose-600 text-white font-bold text-xs">
+              {session?.user?.name?.substring(0, 2).toUpperCase() || "U"}
+            </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Admin</p>
-            <p className="text-xs text-slate-500 truncate">admin@atelie.com</p>
+            <p className="text-sm font-medium text-white truncate">
+              {session?.user?.name || "Carregando..."}
+            </p>
+            <p className="text-xs text-slate-500 truncate">
+              {session?.user?.email || "..."}
+            </p>
           </div>
           
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-red-950/30">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-red-950/30"
+            onClick={() => signOut({ callbackUrl: "/login" })} // Ação de Logout
+          >
             <LogOut className="w-4 h-4" />
           </Button>
         </div>

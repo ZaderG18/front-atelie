@@ -2,7 +2,6 @@ import NextAuth, { type User } from "next-auth" // <--- 1. Importamos o tipo Use
 import Credentials from "next-auth/providers/credentials"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
-
 import { authConfig } from "./auth.config"
 import { prisma } from "@/lib/prisma"
 
@@ -15,6 +14,8 @@ async function getUserByEmail(email: string) {
 export const { auth, signIn, signOut } = NextAuth({
   ...authConfig,
 
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  
   providers: [
     Credentials({
       name: "Credentials",
