@@ -1,15 +1,32 @@
-import type React from "react"
-import type { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { auth } from "@/auth"
+import { AdminSidebar } from "@/components/admin/admin-sidebar"
+import { getPendingOrdersCount } from "@/app/_actions/orders" // <--- Importamos a conta
 
-export const metadata: Metadata = {
-  title: "Admin | Ateliê Aflorar Doces",
-  description: "Painel administrativo",
-}
+export const dynamic = 'force-dynamic' // Garante que o número esteja sempre fresco
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <div className="min-h-screen bg-slate-100 dark:bg-slate-950">{children}</div>
+  const session = await auth()
+
+  if (!session) {
+    redirect("/auth/login")
+  }
+
+  // Busca a contagem de pedidos pendentes
+  const pendingCount = await getPendingOrdersCount()
+
+  return (
+    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950">
+      {/* Passamos o número para a Sidebar */}
+      <AdminSidebar activeItem="dashboard" pendingOrdersCount={pendingCount} />
+      
+      <main className="flex-1 overflow-hidden h-full">
+        {children}
+      </main>
+    </div>
+  )
 }

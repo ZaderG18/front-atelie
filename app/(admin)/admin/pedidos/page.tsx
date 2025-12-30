@@ -21,16 +21,14 @@ export default async function PedidosPage() {
     return acc
   }, { pending: 0, confirmed: 0, delivered: 0 })
 
-  // --- CORREÇÃO AQUI ---
   const formattedOrders = pedidos.map((order) => ({
     ...order, 
     
-    // 1. CONVERSÃO OBRIGATÓRIA DE DECIMAIS DO PRISMA
-    // O erro estava aqui: deliveryFee vinha como Decimal
+    // 1. Conversão de Decimais
     deliveryFee: Number(order.deliveryFee || 0),
-    totalAmount: Number(order.totalAmount), // Convertemos o original também para garantir
+    totalAmount: Number(order.totalAmount),
     
-    // 2. Campos formatados para a Tabela (snake_case)
+    // 2. Formatação para a Tabela
     id: order.id,
     customer_name: order.customerName, 
     total_amount: Number(order.totalAmount),
@@ -43,7 +41,6 @@ export default async function PedidosPage() {
       product_name: item.productName,
       quantity: item.quantity,
       price: Number(item.unitPrice),
-      // Garantimos números nos itens também
       unitPrice: Number(item.unitPrice),
       totalPrice: Number(item.totalPrice)
     })),
@@ -55,9 +52,6 @@ export default async function PedidosPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-slate-950">
-      <AdminSidebar activeItem="pedidos" />
-
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader 
             title="Gerenciar Pedidos" 
@@ -67,6 +61,7 @@ export default async function PedidosPage() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
+            {/* Cards de Status */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border dark:border-slate-800">
                 <div className="flex items-center justify-between">
@@ -90,6 +85,7 @@ export default async function PedidosPage() {
               </div>
             </div>
 
+            {/* Tabela */}
             <PedidosTable 
                 pedidos={formattedOrders} 
                 onStatusChange={updateOrderStatus}
@@ -98,6 +94,5 @@ export default async function PedidosPage() {
           </div>
         </main>
       </div>
-    </div>
   )
 }

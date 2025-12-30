@@ -11,7 +11,7 @@ async function getUserByEmail(email: string) {
   })
 }
 
-export const { auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
 
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },

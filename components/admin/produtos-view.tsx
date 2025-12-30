@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { ProdutoModal } from "@/components/admin/produto-modal"
 import { saveProduct, deleteProduct, toggleProductVisibility } from "@/app/_actions/products"
@@ -102,8 +101,6 @@ export function ProdutosView({ initialProdutos }: ProdutosViewProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-slate-950">
-      <AdminSidebar activeItem="produtos" />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader 
@@ -209,6 +206,5 @@ export function ProdutosView({ initialProdutos }: ProdutosViewProps) {
           produto={produtoEditando}
         />
       </div>
-    </div>
   )
 }

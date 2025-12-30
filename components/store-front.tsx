@@ -12,9 +12,10 @@ import type { Product, CartItem } from "@/lib/types"
 
 interface StoreFrontProps {
   initialProducts: Product[]
+  settings?: any // Recebe as configurações do banco
 }
 
-export function StoreFront({ initialProducts }: StoreFrontProps) {
+export function StoreFront({ initialProducts, settings }: StoreFrontProps) {
   const [selectedCategory, setSelectedCategory] = useState("todos")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
@@ -95,6 +96,13 @@ export function StoreFront({ initialProducts }: StoreFrontProps) {
         onMenuClick={() => setIsMobileMenuOpen(true)}
       />
 
+      {/* 🚫 AVISO DE LOJA FECHADA (Novo) */}
+      {settings && !settings.lojaAberta && (
+        <div className="bg-red-600 text-white text-center py-3 px-4 text-sm font-bold shadow-md animate-in slide-in-from-top sticky top-[72px] z-40">
+          🕒 A loja está fechada no momento. Você pode navegar, mas aceitamos apenas agendamentos.
+        </div>
+      )}
+
       <HeroSection onCtaClick={scrollToMenu} />
 
       <section id="cardapio" className="px-4 py-12 md:px-8 lg:px-16">
@@ -129,12 +137,14 @@ export function StoreFront({ initialProducts }: StoreFrontProps) {
         onAddToCart={handleAddToCart}
       />
 
+      {/* Passamos 'settings' para o Carrinho calcular taxas e usar o Zap correto */}
       <CartDrawer
         items={cartItems}
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         onRemoveItem={handleRemoveFromCart}
         clearCart={clearCart}
+        settings={settings} 
       />
 
       <MobileMenu

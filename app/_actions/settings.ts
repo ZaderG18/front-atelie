@@ -2,11 +2,11 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-// Importamos o tipo que criamos no passo anterior
 import type { StoreSettingsInput } from "@/lib/settings-types"
+import { WeekDay } from "@prisma/client" // <--- 1. Importar o Enum
 
 // ==============================================================================
-// 1. BUSCAR CONFIGURAÇÕES (Mantivemos sua lógica de criar se não existir)
+// 1. BUSCAR CONFIGURAÇÕES
 // ==============================================================================
 export async function getStoreSettings() {
   try {
@@ -14,13 +14,11 @@ export async function getStoreSettings() {
       include: { bairros: true }
     })
 
-    // Se não existir, cria a padrão (Singleton / Seed automático)
     if (!settings) {
       settings = await prisma.storeSettings.create({
         data: {
-          nomeConfeitaria: "Ateliê Aflorar Doces", // Já acertei o nome aqui
+          nomeConfeitaria: "Ateliê Aflorar Doces",
           logoUrl: "/logo.png",
-          // Cria com dados padrão para não quebrar a UI
           bairros: {
             create: [
               { nome: "Centro", taxa: 10.00 },
@@ -32,7 +30,6 @@ export async function getStoreSettings() {
       })
     }
 
-    // Serializar Decimals para Number (Obrigatório para passar do Server pro Client)
     return {
       ...settings,
       taxaFixa: Number(settings.taxaFixa),
@@ -50,11 +47,10 @@ export async function getStoreSettings() {
 }
 
 // ==============================================================================
-// 2. SALVAR CONFIGURAÇÕES (Versão Blindada com Tipagem)
+// 2. SALVAR CONFIGURAÇÕES
 // ==============================================================================
 export async function updateStoreSettings(data: StoreSettingsInput) {
   try {
-    // Validação Básica
     if (!data.geral.nomeConfeitaria.trim()) {
       return { success: false, error: "O nome da confeitaria é obrigatório." }
     }
@@ -79,7 +75,11 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           lojaAberta: data.cardapio.aberto,
           horaAbertura: data.cardapio.horaAbertura,
           horaFechamento: data.cardapio.horaFechamento,
-          diasFuncionamento: data.cardapio.diasFuncionamento,
+          
+          // --- CORREÇÃO AQUI ---
+          // Dizemos ao TS: "Confie em mim, essas strings são do tipo WeekDay"
+          diasFuncionamento: data.cardapio.diasFuncionamento as WeekDay[],
+          
           tempoPreparo: data.cardapio.tempoPreparo,
           aceitaEncomendas: data.cardapio.aceitaEncomendas,
 
@@ -92,34 +92,30 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
 
           // Entregas
           tipoTaxaEntrega: data.entregas.tipoTaxa,
-          // CONVERSÃO SEGURA: Garante que vira número ou 0
           taxaFixa: Number(data.entregas.taxaFixa || 0),
           freteGratis: Number(data.entregas.freteGratis || 0),
           retiradaLocal: data.entregas.retiradaLocal,
         }
       })
 
-      // 2.2. Atualiza Bairros (Remove antigos e recria novos)
+      // 2.2. Atualiza Bairros
       if (data.entregas.bairros) {
-        // Limpa a tabela de bairros vinculada a essa configuração
         await tx.deliveryNeighborhood.deleteMany({
            where: { settingsId: existing.id }
         })
         
-        // Insere os novos se houver
         if (data.entregas.bairros.length > 0) {
           await tx.deliveryNeighborhood.createMany({
             data: data.entregas.bairros.map(b => ({
               settingsId: existing.id,
               nome: b.nome,
-              taxa: Number(b.taxa || 0) // Segurança extra aqui também
+              taxa: Number(b.taxa || 0)
             }))
           })
         }
       }
     })
 
-    // Revalidação poderosa: Atualiza admin e o site público
     revalidatePath("/admin/configuracoes")
     revalidatePath("/admin")
     revalidatePath("/") 

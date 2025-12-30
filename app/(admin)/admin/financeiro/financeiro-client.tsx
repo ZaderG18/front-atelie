@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation" 
-import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { createTransaction } from "@/app/_actions/financial" 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -84,8 +83,6 @@ export default function FinanceiroClient({ initialData }: Props) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-slate-950">
-      <AdminSidebar activeItem="financeiro" />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader title="Financeiro" subtitle="Controle de faturamento, despesas e fluxo de caixa" />
@@ -225,6 +222,5 @@ export default function FinanceiroClient({ initialData }: Props) {
           </Card>
         </main>
       </div>
-    </div>
   )
 }

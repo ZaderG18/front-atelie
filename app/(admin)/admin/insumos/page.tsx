@@ -9,21 +9,28 @@ export default async function InsumosPage() {
     orderBy: { name: 'asc' }
   })
 
-  // 2. Formata para o Front (Converte Decimal e calcula status)
-  const formattedInsumos = ingredients.map((item: string | any) => ({
+  // 2. Formata para o Front (CORRIGIDO: Nomes das colunas camelCase)
+  const formattedInsumos = ingredients.map((item) => ({
     id: item.id.toString(),
     nome: item.name,
     unidade: item.unit,
-    custoUnitario: Number(item.cost_price),
-    estoqueAtual: Number(item.stock_quantity),
-    estoqueMinimo: Number(item.min_stock_alert),
-    // Lógica de Status calculada no servidor
-    status: Number(item.stock_quantity) < Number(item.min_stock_alert) 
+    
+    // --- CORREÇÃO AQUI ---
+    // Usar costPrice em vez de cost_price
+    custoUnitario: Number(item.costPrice),
+    
+    // Usar stockQuantity em vez de stock_quantity
+    estoqueAtual: Number(item.stockQuantity),
+    
+    // Usar minStockAlert em vez de min_stock_alert
+    estoqueMinimo: Number(item.minStockAlert),
+    
+    status: Number(item.stockQuantity) < Number(item.minStockAlert) 
       ? "critico" 
       : "em_estoque",
   }))
 
-  // 3. Renderiza o Cliente com os dados iniciais
-  // @ts-ignore: Ignorando erro de tipagem estrita do Insumo por enquanto
+  // 3. Renderiza o Cliente
+  // @ts-ignore
   return <InsumosView initialInsumos={formattedInsumos} />
 }

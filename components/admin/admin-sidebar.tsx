@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useSession, signOut } from "next-auth/react" // <--- Importações necessárias
+import { useSession, signOut } from "next-auth/react"
 import {
   LayoutDashboard,
   Package,
@@ -20,11 +20,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface AdminSidebarProps {
   activeItem?: string
+  pendingOrdersCount?: number // <--- Nova prop vital
 }
 
-export function AdminSidebar({ activeItem }: AdminSidebarProps) {
+export function AdminSidebar({ activeItem, pendingOrdersCount = 0 }: AdminSidebarProps) {
   const pathname = usePathname()
-  const { data: session } = useSession() // <--- Obtém os dados da sessão
+  const { data: session } = useSession()
 
   // Definição do Menu
   const menuItems = [
@@ -33,14 +34,14 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
       label: "Dashboard", 
       icon: LayoutDashboard, 
       href: "/admin", 
-      badge: null // Removido mock
+      badge: null 
     },
     { 
       id: "pedidos", 
       label: "Pedidos", 
       icon: ShoppingCart, 
       href: "/admin/pedidos", 
-      badge: null // Removido mock "3" -> Vamos implementar contador real depois
+      badge: pendingOrdersCount > 0 ? pendingOrdersCount : null // <--- Badge Real!
     },
     { 
       id: "produtos", 
@@ -54,7 +55,7 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
       label: "Estoque", 
       icon: Package, 
       href: "/admin/insumos", 
-      badge: null // Removido mock "2"
+      badge: null 
     },
     { 
       id: "financeiro", 
@@ -72,15 +73,8 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
     },
   ]
 
-  // Filtra itens baseados no cargo (Opcional: Segurança Visual)
-  // Se quiser esconder Financeiro/Config de funcionários, descomente abaixo:
-  /*
-  const filteredItems = menuItems.filter(item => {
-    if (session?.user?.role === "ADMIN") return true
-    return !["financeiro", "configuracoes"].includes(item.id)
-  })
-  */
-  const filteredItems = menuItems // Usando todos por enquanto
+  // Mantemos a lógica de filtrar (comentada por enquanto)
+  const filteredItems = menuItems
 
   return (
     <aside className="w-72 bg-slate-950 text-slate-300 flex flex-col h-screen border-r border-slate-800 hidden md:flex">
@@ -102,15 +96,14 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
         <p className="px-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menu Principal</p>
 
         {filteredItems.slice(0, 4).map((item) => {
-          // Lógica de "ativo" melhorada para pegar sub-rotas
-          const isActive = activeItem === item.id || pathname.startsWith(item.href) && item.href !== "/admin" || (item.href === "/admin" && pathname === "/admin")
+          const isActive = activeItem === item.id || (pathname.startsWith(item.href) && item.href !== "/admin") || (item.href === "/admin" && pathname === "/admin")
           const Icon = item.icon
 
           return (
             <Link key={item.id} href={item.href}>
               <div
                 className={cn(
-                  "flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer",
+                  "flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group cursor-pointer relative",
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
                     : "hover:bg-slate-800/50 hover:text-white"
@@ -125,13 +118,10 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
                   />
                   <span className="font-medium text-sm">{item.label}</span>
                 </div>
+                
+                {/* Badge Vermelho Pulsante */}
                 {item.badge && (
-                  <Badge
-                    className={cn(
-                      "text-xs px-2 py-0.5 border-0",
-                      isActive ? "bg-white/20 text-white" : "bg-rose-500/10 text-rose-400"
-                    )}
-                  >
+                  <Badge className="bg-red-600 hover:bg-red-700 text-white border-0 px-2 py-0.5 text-xs animate-in zoom-in duration-300">
                     {item.badge}
                   </Badge>
                 )}
@@ -204,7 +194,7 @@ export function AdminSidebar({ activeItem }: AdminSidebarProps) {
             variant="ghost" 
             size="icon" 
             className="h-8 w-8 text-slate-400 hover:text-red-400 hover:bg-red-950/30"
-            onClick={() => signOut({ callbackUrl: "/login" })} // Ação de Logout
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
           >
             <LogOut className="w-4 h-4" />
           </Button>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition, useEffect } from "react" // <--- 1. Importar useEffect
-import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { updateStoreSettings } from "@/app/_actions/settings"
 import { createUser, deleteUser } from "@/app/_actions/users"
@@ -170,8 +169,6 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-slate-950">
-      <AdminSidebar activeItem="configuracoes" />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader title="Configurações" subtitle="Personalize sua loja e defina preferências" />
@@ -500,6 +497,5 @@ export default function ConfiguracoesClient({ initialData, users = [] }: { initi
           </div>
         </main>
       </div>
-    </div>
   )
 }
